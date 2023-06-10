@@ -1,4 +1,4 @@
-use super::config::Config;
+use crate::config::Config;
 
 #[derive(Debug)]
 pub enum CompilationUnitScope {

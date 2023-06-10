@@ -1,5 +1,5 @@
 use std::iter;
-use super::compilation_unit::CompilationUnitScope;
+use crate::compilation_unit::CompilationUnitScope;
 
 #[derive(Debug)]
 pub struct Config {
