@@ -119,7 +119,7 @@ impl Lexer {
     pub fn lex(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
 
-        while !self.can_read() {
+        while self.can_read() {
             match self.lex_token() {
                 Token::WhiteSpace | Token::Comment => (),
                 token => tokens.push(token),
@@ -190,7 +190,7 @@ impl Lexer {
             return Err("Not a sequence of white space characters");
         }
 
-        while !self.can_read() && self.peek()?.is_whitespace() {
+        while self.can_read() && self.peek()?.is_whitespace() {
             self.read()?;
         }
 
@@ -251,7 +251,7 @@ impl Lexer {
             return Err("String literal must start with \"");
         }
 
-        while !self.can_read() && self.peek()? != '"' {
+        while self.can_read() && self.peek()? != '"' {
             let ch = self.read()?;
             match ch {
                 '\\' => string_literal.push(self.read_escaped_character()?),
@@ -259,7 +259,7 @@ impl Lexer {
             }
         }
 
-        if self.can_read() {
+        if !self.can_read() {
             return Err("String literal is never closed");
         }
 
@@ -310,7 +310,7 @@ impl Lexer {
         let mut character_sequence = String::from("");
         let file_position = self.file_position();
 
-        while !self.can_read() && self.peek()?.is_alphabetic() {
+        while self.can_read() && self.peek()?.is_alphabetic() {
             character_sequence.push(self.read()?);
         }
 
@@ -465,5 +465,12 @@ impl Lexer {
             )),
             _ => Err("Unrecognized punctuation mark"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn should_lex_white_space() {
     }
 }
