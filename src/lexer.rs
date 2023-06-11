@@ -88,7 +88,7 @@ impl Lexer {
     fn read(&mut self) -> Result<char, &'static str> {
         match self.char_reader.read_char() {
             None => Err("End of file"),
-            Some('\n') => {
+            Some('\n') | Some('\r') => {
                 self.move_to_new_line();
                 Ok('\n')
             }
@@ -160,7 +160,7 @@ impl Lexer {
         let file_position = self.file_position();
         let mut best_token =
             ErrorToken::build_token("Failed to read any characters", file_position);
-        let mut best_mark = Mark::build(0, 1, 0);
+        let mut best_mark = Mark::build(0, 1, 1);
 
         for operator in LEXICAL_OPERATIONS {
             self.mark();
@@ -201,7 +201,7 @@ impl Lexer {
 
     fn move_to_new_line(&mut self) {
         self.row += 1;
-        self.column = 0;
+        self.column = 1;
     }
 
     fn lex_comments(&mut self) -> Result<Token, &'static str> {
@@ -278,6 +278,7 @@ impl Lexer {
             '"' => Ok('"'),
             't' => Ok('\t'),
             'n' => Ok('\n'),
+            'r' => Ok('\r'),
             _ => Ok(' '),
         }
     }
@@ -493,7 +494,7 @@ mod tests {
 
     #[test]
     fn should_lex_empty_file() -> Result<(), Error> {
-        let expected_tokens = vec![Token::EOF(FilePosition::new(1, 0))];
+        let expected_tokens = vec![Token::EOF(FilePosition::new(1, 1))];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "empty.sv", "")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
@@ -501,7 +502,6 @@ mod tests {
         let tokens = lexer.lex();
 
         assert_eq!(tokens.len(), expected_tokens.len());
-        dbg!(&tokens, &expected_tokens);
         dir.close()?;
 
         Ok(())
@@ -509,7 +509,7 @@ mod tests {
 
     #[test]
     fn should_lex_white_space() -> Result<(), Error> {
-        let expected_tokens = vec![Token::EOF(FilePosition::new(2, 3))];
+        let expected_tokens = vec![Token::EOF(FilePosition::new(3, 3))];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "whitespace.sv", "\n\r \t")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
@@ -517,7 +517,30 @@ mod tests {
         let tokens = lexer.lex();
 
         assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_comments() -> Result<(), Error> {
+        let expected_tokens = vec![Token::EOF(FilePosition::new(6, 3))];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "comments.sv", "// A comment
+/*
+* A
+* Block
+* Comment
+*/")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
         dbg!(&tokens, &expected_tokens);
+        assert_eq!(tokens.len(), expected_tokens.len());
         for i in 0..tokens.len() {
             assert_eq!(tokens[i], expected_tokens[i]);
         }
