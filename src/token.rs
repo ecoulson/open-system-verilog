@@ -3,7 +3,7 @@ use crate::lexer::FilePosition;
 use crate::operators::Operator;
 use crate::punctuation::Punctuation;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Token {
     WhiteSpace,
     Comment,
@@ -25,43 +25,43 @@ pub trait BuildToken<T> {
     fn build_token(value: T, position: FilePosition) -> Token;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct NumberToken {
     number: String,
     position: FilePosition,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct StringLiteralToken {
     string_literal: String,
     position: FilePosition
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CharacterSequenceToken {
     character_sequence: String,
     position: FilePosition
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OperatorToken {
     operator: Operator,
     position: FilePosition
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct PunctuationToken {
     punctuation: Punctuation,
     position: FilePosition
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct KeywordToken {
     keyword: Keyword,
     position: FilePosition
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ErrorToken {
     message: &'static str,
     position: FilePosition

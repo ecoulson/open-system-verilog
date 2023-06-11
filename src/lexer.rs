@@ -56,15 +56,20 @@ pub struct Lexer {
     mark: Option<Mark>,
 }
 
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FilePosition {
     column: usize,
     row: usize,
 }
 
+impl FilePosition {
+    fn new(row: usize, column: usize) -> FilePosition {
+        FilePosition { column, row }
+    }
+}
+
 impl Lexer {
-    pub fn open(file_path: &String) -> Lexer {
+    pub fn open(file_path: &str) -> Lexer {
         Lexer {
             char_reader: CharReader::open(file_path),
             mark: None,
@@ -175,10 +180,7 @@ impl Lexer {
     }
 
     fn file_position(&self) -> FilePosition {
-        FilePosition {
-            row: self.row,
-            column: self.column,
-        }
+        FilePosition::new(self.row, self.column)
     }
 
     fn can_read(&mut self) -> bool {
@@ -470,7 +472,57 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+    use std::io::{Error, Write};
+    use std::path::PathBuf;
+
+    use super::{FilePosition, Lexer, Token};
+    use tempfile::{tempdir, TempDir};
+
+    fn create_temporary_verilog_file(
+        dir: &TempDir,
+        file_name: &'static str,
+        content: &'static str,
+    ) -> Result<PathBuf, Error> {
+        let file_path = dir.path().join(file_name);
+        let mut file = File::create(&file_path)?;
+        file.write(content.as_bytes())?;
+
+        Ok(file_path)
+    }
+
     #[test]
-    fn should_lex_white_space() {
+    fn should_lex_empty_file() -> Result<(), Error> {
+        let expected_tokens = vec![Token::EOF(FilePosition::new(1, 0))];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "empty.sv", "")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        dbg!(&tokens, &expected_tokens);
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_white_space() -> Result<(), Error> {
+        let expected_tokens = vec![Token::EOF(FilePosition::new(2, 3))];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "whitespace.sv", "\n\r \t")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        dbg!(&tokens, &expected_tokens);
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
     }
 }

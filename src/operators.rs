@@ -6,7 +6,7 @@ pub const OPERATOR_SYMBOLS: [&'static str; 50] = [
 ];
 
 // Missing replication and conditional operators ( will be used in parse but not tokenization)
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
     Modulo,
     Negation,

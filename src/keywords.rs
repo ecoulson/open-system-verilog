@@ -247,7 +247,7 @@ pub const KEYWORD_SYMBOLS: [&'static str; 246] = [
     "xor",
 ];
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Keyword {
     AcceptOn,
     Alias,
