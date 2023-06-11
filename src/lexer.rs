@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::char_reader::CharReader;
 use crate::keywords::KEYWORD_SYMBOLS;
 use crate::operators::OPERATOR_SYMBOLS;
@@ -105,7 +107,7 @@ impl Lexer {
         };
 
         match token {
-            Err(error) => ErrorToken::build_token(error),
+            Err(message) => ErrorToken::build_token(message),
             Ok(token) => token,
         }
     }
@@ -137,7 +139,9 @@ impl Lexer {
 
     fn lex_white_space(&mut self) -> Result<Token, &'static str> {
         if !self.read()?.is_whitespace() {
-            return Err("Not a sequence of white space characters");
+            return Err(
+                "Not a sequence of white space characters",
+            );
         }
 
         while !self.is_at_eof() && self.peek()?.is_whitespace() {
@@ -155,7 +159,9 @@ impl Lexer {
         match self.read()? {
             '/' => self.lex_line_comment(),
             '*' => self.lex_block_comment(),
-            _ => Err("Slash is not followed by slash or astrix"),
+            _ => Err(
+                "Slash is not followed by slash or astrix",
+            ),
         }
     }
 
@@ -264,7 +270,7 @@ impl Lexer {
     }
 
     fn get_best_sequence(&mut self, sequences: &[&'static str]) -> Option<&'static str> {
-        let matched_sequences: Vec<&'static str> = sequences
+        let best_sequence: Option<&'static str> = sequences
             .iter()
             .map(|op| {
                 self.mark();
@@ -275,24 +281,15 @@ impl Lexer {
             })
             .filter(|seq| seq.is_ok())
             .map(|seq| seq.unwrap())
-            .collect();
+            .reduce(Lexer::compare_sequences);
 
-        if matched_sequences.is_empty() {
+        if best_sequence.is_none() {
             return None;
         }
 
-        let mut best_sequence = matched_sequences[0];
+        self.go_to(self.position() + best_sequence.unwrap().len());
 
-        for operator in matched_sequences {
-            if best_sequence.len() < operator.len() {
-                best_sequence = operator;
-            }
-        }
-
-        let next_position = self.position() + best_sequence.len();
-        self.go_to(next_position);
-
-        Some(best_sequence)
+        best_sequence
     }
 
     fn read_sequence(&mut self, sequence: &'static str) -> Result<&'static str, &'static str> {
@@ -303,6 +300,13 @@ impl Lexer {
         }
 
         Ok(sequence)
+    }
+
+    fn compare_sequences(best_sequence: &'static str, sequence: &'static str) -> &'static str {
+        match sequence.chars().count().cmp(&sequence.chars().count()) {
+            Ordering::Greater | Ordering::Equal => sequence,
+            _ => best_sequence,
+        }
     }
 
     fn lex_keyword(&mut self) -> Result<Token, &'static str> {

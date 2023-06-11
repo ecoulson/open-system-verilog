@@ -55,10 +55,8 @@ impl CharReader {
         let current_block = self.get_current_block();
 
         if self.seek_position % self.buffer.len() == 0 && self.block != current_block {
-            match self.read_into_buffer() {
-                None => return None,
-                _ => self.block = current_block,
-            };
+            self.read_into_buffer();
+            self.block = current_block;
         }
 
         let peeked_char = self.get_current_char();
@@ -101,14 +99,11 @@ impl CharReader {
             process::exit(1);
         }
 
-        if self.read_into_buffer().is_none() {
-            eprintln!("Failed to fill buffer after seek back across blocks");
-            process::exit(1);
-        };
+        self.read_into_buffer();
     }
 
-    fn read_into_buffer(&mut self) -> Option<usize> {
-        let bytes_read = self.file.read(&mut self.buffer).unwrap_or_else(|error| {
+    fn read_into_buffer(&mut self) {
+        self.file.read(&mut self.buffer).unwrap_or_else(|error| {
             match error.kind() {
                 ErrorKind::Interrupted => {
                     eprintln!("IO Operation interrupted, consider implementing read retries")
@@ -117,10 +112,5 @@ impl CharReader {
             }
             process::exit(1)
         });
-
-        match bytes_read {
-            0 => return None,
-            _ => return Some(bytes_read),
-        }
     }
 }
