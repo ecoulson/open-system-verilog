@@ -73,7 +73,7 @@ impl Lexer {
         Lexer {
             char_reader: CharReader::open(file_path),
             mark: None,
-            column: 0,
+            column: 1,
             row: 1,
         }
     }
@@ -234,7 +234,7 @@ impl Lexer {
         let mut number = String::new();
         let file_position = self.file_position();
 
-        while self.peek()?.is_digit(10) {
+        while self.can_read() && self.peek()?.is_digit(10) {
             number.push(self.read()?);
         }
 
@@ -477,6 +477,8 @@ mod tests {
     use std::io::{Error, Write};
     use std::path::PathBuf;
 
+    use crate::token::{NumberToken, BuildToken};
+
     use super::{FilePosition, Lexer, Token};
     use tempfile::{tempdir, TempDir};
 
@@ -529,12 +531,38 @@ mod tests {
     fn should_lex_comments() -> Result<(), Error> {
         let expected_tokens = vec![Token::EOF(FilePosition::new(6, 3))];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "comments.sv", "// A comment
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "comments.sv",
+            "// A comment
 /*
 * A
 * Block
 * Comment
-*/")?;
+*/",
+        )?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        dbg!(&tokens, &expected_tokens);
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_number() -> Result<(), Error> {
+        let expected_tokens = vec![
+            NumberToken::build_token(String::from("42069"), FilePosition::new(1, 1)),
+            Token::EOF(FilePosition::new(1, 6)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "numbers.sv", "42069")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
