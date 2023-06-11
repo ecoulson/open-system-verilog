@@ -56,6 +56,8 @@ pub struct Lexer {
     mark: Option<Mark>,
 }
 
+
+#[derive(Debug)]
 pub struct FilePosition {
     column: usize,
     row: usize,
