@@ -144,7 +144,6 @@ mod tests {
             file.write(&content)?;
         }
 
-        dbg!(File::open(file_path.to_str().unwrap())?);
         Ok(file_path)
     }
 
@@ -163,6 +162,7 @@ mod tests {
 
         assert_eq!(reader.get_position(), BUFFER_SIZE);
         assert_eq!(reader.block, 1);
+        dir.close()?;
 
         Ok(())
     }
@@ -185,6 +185,7 @@ mod tests {
 
         assert_eq!(reader.get_position(), FILE_SIZE);
         assert_eq!(reader.block, BLOCKS);
+        dir.close()?;
 
         Ok(())
     }
@@ -216,6 +217,7 @@ mod tests {
 
         assert_eq!(reader.get_position(), FILE_SIZE);
         assert_eq!(reader.block, BLOCKS);
+        dir.close()?;
 
         Ok(())
     }
