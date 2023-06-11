@@ -119,7 +119,7 @@ impl Lexer {
     pub fn lex(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
 
-        while !self.is_at_eof() {
+        while !self.can_read() {
             match self.lex_token() {
                 Token::WhiteSpace | Token::Comment => (),
                 token => tokens.push(token),
@@ -181,8 +181,8 @@ impl Lexer {
         }
     }
 
-    fn is_at_eof(&mut self) -> bool {
-        self.char_reader.peek_char().is_none()
+    fn can_read(&mut self) -> bool {
+        self.char_reader.has_chars()
     }
 
     fn lex_white_space(&mut self) -> Result<Token, &'static str> {
@@ -190,7 +190,7 @@ impl Lexer {
             return Err("Not a sequence of white space characters");
         }
 
-        while !self.is_at_eof() && self.peek()?.is_whitespace() {
+        while !self.can_read() && self.peek()?.is_whitespace() {
             self.read()?;
         }
 
@@ -251,7 +251,7 @@ impl Lexer {
             return Err("String literal must start with \"");
         }
 
-        while !self.is_at_eof() && self.peek()? != '"' {
+        while !self.can_read() && self.peek()? != '"' {
             let ch = self.read()?;
             match ch {
                 '\\' => string_literal.push(self.read_escaped_character()?),
@@ -259,7 +259,7 @@ impl Lexer {
             }
         }
 
-        if self.is_at_eof() {
+        if self.can_read() {
             return Err("String literal is never closed");
         }
 
@@ -310,7 +310,7 @@ impl Lexer {
         let mut character_sequence = String::from("");
         let file_position = self.file_position();
 
-        while !self.is_at_eof() && self.peek()?.is_alphabetic() {
+        while !self.can_read() && self.peek()?.is_alphabetic() {
             character_sequence.push(self.read()?);
         }
 
