@@ -35,16 +35,6 @@ pub struct Lexer {
     marked_position: Option<usize>,
 }
 
-struct TokenScore {
-    token: Token,
-    position: usize,
-}
-
-struct ErrorScore {
-    error: &'static str,
-    position: usize,
-}
-
 impl Lexer {
     pub fn open(file_path: &String) -> Lexer {
         Lexer {
@@ -67,8 +57,16 @@ impl Lexer {
         }
     }
 
+    fn position(&self) -> usize {
+        self.char_reader.get_position()
+    }
+
+    fn go_to(&mut self, position: usize) {
+        self.char_reader.seek_from_start(position)
+    }
+
     fn mark(&mut self) {
-        self.marked_position = Some(self.char_reader.get_position());
+        self.marked_position = Some(self.position());
     }
 
     fn go_to_mark(&mut self) {
@@ -76,8 +74,7 @@ impl Lexer {
             return;
         }
 
-        self.char_reader
-            .seek_from_start(self.marked_position.unwrap());
+        self.go_to(self.marked_position.unwrap());
     }
 
     pub fn lex(&mut self) -> Vec<Token> {
@@ -86,20 +83,16 @@ impl Lexer {
         while !self.is_at_eof() {
             match self.lex_token() {
                 Token::WhiteSpace | Token::Comment => (),
-                token => tokens.push(token)
+                token => tokens.push(token),
             }
         }
+
+        tokens.push(Token::EOF);
 
         tokens
     }
 
-    fn execute_lexical_operation(
-        &mut self,
-        operation: LexerOperator,
-        token_score: &mut TokenScore,
-        error_score: &mut ErrorScore,
-    ) {
-        self.mark();
+    fn execute_lexical_operation(&mut self, operation: LexerOperator) -> Token {
         let token = match operation {
             LexerOperator::WhiteSpace => self.lex_white_space(),
             LexerOperator::Comment => self.lex_comments(),
@@ -110,51 +103,32 @@ impl Lexer {
             LexerOperator::Keyword => self.lex_keyword(),
             LexerOperator::Punctuation => self.lex_punctuation(),
         };
-        let position = self.char_reader.get_position();
-        self.go_to_mark();
 
-        if let Err(error) = token {
-            if error_score.position < position {
-                error_score.position = position;
-                error_score.error = error;
-            }
-        } else {
-            if token_score.position <= position {
-                token_score.position = position;
-                token_score.token = token.unwrap();
-            }
+        match token {
+            Err(error) => ErrorToken::build_token(error),
+            Ok(token) => token,
         }
     }
 
     fn lex_token(&mut self) -> Token {
-        if self.is_at_eof() {
-            return Token::EOF;
-        }
-
-        let mut token_score = TokenScore {
-            position: 0,
-            token: Token::EOF,
-        };
-        let mut error_score = ErrorScore {
-            position: 0,
-            error: "",
-        };
+        let mut best_token = ErrorToken::build_token("Failed to read any characters");
+        let mut best_position = 0;
 
         for operator in LEXICAL_OPERATIONS {
-            self.execute_lexical_operation(operator, &mut token_score, &mut error_score);
+            self.mark();
+            let token = self.execute_lexical_operation(operator);
+            let position = self.position();
+            self.go_to_mark();
+
+            if best_position < position {
+                best_position = position;
+                best_token = token;
+            }
         }
 
-        if token_score.position > 0 {
-            self.char_reader.seek_from_start(token_score.position);
-            return token_score.token;
-        }
+        self.go_to(best_position);
 
-        if error_score.position > 0 {
-            self.char_reader.seek_from_start(error_score.position);
-            return ErrorToken::build_token(error_score.error);
-        }
-
-        ErrorToken::build_token("Failed to read any characters")
+        best_token
     }
 
     fn is_at_eof(&mut self) -> bool {
@@ -202,7 +176,7 @@ impl Lexer {
     fn lex_number(&mut self) -> Result<Token, &'static str> {
         let mut number = String::new();
 
-        while !self.is_at_eof() && self.peek()?.is_digit(10) {
+        while self.peek()?.is_digit(10) {
             number.push(self.read()?);
         }
 
@@ -238,11 +212,10 @@ impl Lexer {
     }
 
     fn read_escaped_character(&mut self) -> Result<char, &'static str> {
-        match self.read() {
-            Err(_) => return Err("String literal is never closed"),
-            Ok('"') => Ok('"'),
-            Ok('t') => Ok('\t'),
-            Ok('n') => Ok('\n'),
+        match self.read()? {
+            '"' => Ok('"'),
+            't' => Ok('\t'),
+            'n' => Ok('\n'),
             _ => Ok(' '),
         }
     }
@@ -272,7 +245,7 @@ impl Lexer {
     fn lex_simple_identifier(&mut self) -> Result<Token, &'static str> {
         let mut character_sequence = String::from("");
 
-        while self.peek()?.is_alphabetic() {
+        while !self.is_at_eof() && self.peek()?.is_alphabetic() {
             character_sequence.push(self.read()?);
         }
 
@@ -316,8 +289,8 @@ impl Lexer {
             }
         }
 
-        let next_position = self.char_reader.get_position() + best_sequence.len();
-        self.char_reader.seek_from_start(next_position);
+        let next_position = self.position() + best_sequence.len();
+        self.go_to(next_position);
 
         Some(best_sequence)
     }
