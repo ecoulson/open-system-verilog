@@ -15,7 +15,7 @@ pub struct CharReader {
     buffer: [u8; BUFFER_SIZE],
     file: File,
 }
-
+//
 // TODO: If a file is larger than usize::MAX this will cause issues for reading
 // the file. Should really just rely on modular arithmetic
 impl CharReader {

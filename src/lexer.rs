@@ -32,16 +32,33 @@ enum LexerOperator {
     Punctuation,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Mark {
+    position: usize,
+    row: usize,
+    column: usize,
+}
+
 pub struct Lexer {
     char_reader: CharReader,
-    marked_position: Option<usize>,
+    column: usize,
+    row: usize,
+    mark: Option<Mark>,
+}
+
+#[derive(Debug)]
+pub struct FilePosition {
+    column: usize,
+    row: usize,
 }
 
 impl Lexer {
     pub fn open(file_path: &String) -> Lexer {
         Lexer {
             char_reader: CharReader::open(file_path),
-            marked_position: None,
+            mark: None,
+            column: 0,
+            row: 1,
         }
     }
 
@@ -55,7 +72,14 @@ impl Lexer {
     fn read(&mut self) -> Result<char, &'static str> {
         match self.char_reader.read_char() {
             None => Err("End of file"),
-            Some(ch) => Ok(ch),
+            Some('\n') => {
+                self.move_to_new_line();
+                Ok('\n')
+            }
+            Some(ch) => {
+                self.column += 1;
+                Ok(ch)
+            }
         }
     }
 
@@ -63,20 +87,26 @@ impl Lexer {
         self.char_reader.get_position()
     }
 
-    fn go_to(&mut self, position: usize) {
-        self.char_reader.seek_from_start(position)
+    fn go_to(&mut self, mark: Mark) {
+        self.row = mark.row;
+        self.column = mark.column;
+        self.char_reader.seek_from_start(mark.position)
     }
 
     fn mark(&mut self) {
-        self.marked_position = Some(self.position());
+        self.mark = Some(Mark {
+            position: self.position(),
+            row: self.row,
+            column: self.column,
+        })
     }
 
     fn go_to_mark(&mut self) {
-        if self.marked_position.is_none() {
+        if self.mark.is_none() {
             return;
         }
 
-        self.go_to(self.marked_position.unwrap());
+        self.go_to(self.mark.unwrap());
     }
 
     pub fn lex(&mut self) -> Vec<Token> {
@@ -89,12 +119,14 @@ impl Lexer {
             }
         }
 
-        tokens.push(Token::EOF);
+        tokens.push(Token::EOF(self.file_position()));
 
         tokens
     }
 
     fn execute_lexical_operation(&mut self, operation: LexerOperator) -> Token {
+        let file_position = self.file_position();
+
         let token = match operation {
             LexerOperator::WhiteSpace => self.lex_white_space(),
             LexerOperator::Comment => self.lex_comments(),
@@ -107,30 +139,48 @@ impl Lexer {
         };
 
         match token {
-            Err(message) => ErrorToken::build_token(message),
+            Err(message) => ErrorToken::build_token(message, file_position),
             Ok(token) => token,
         }
     }
 
     fn lex_token(&mut self) -> Token {
-        let mut best_token = ErrorToken::build_token("Failed to read any characters");
-        let mut best_position = 0;
+        let file_position = self.file_position();
+        let mut best_token =
+            ErrorToken::build_token("Failed to read any characters", file_position);
+        let mut best_mark = Mark {
+            row: 1,
+            column: 0,
+            position: 0,
+        };
 
         for operator in LEXICAL_OPERATIONS {
             self.mark();
             let token = self.execute_lexical_operation(operator);
-            let position = self.position();
+            let mark = Mark {
+                row: self.row,
+                column: self.column,
+                position: self.position(),
+            };
             self.go_to_mark();
 
-            if best_position < position {
-                best_position = position;
+            if best_mark.position < mark.position {
+                best_mark = mark;
                 best_token = token;
             }
         }
 
-        self.go_to(best_position);
+        dbg!(&best_mark);
+        self.go_to(best_mark);
 
         best_token
+    }
+
+    fn file_position(&self) -> FilePosition {
+        FilePosition {
+            row: self.row,
+            column: self.column,
+        }
     }
 
     fn is_at_eof(&mut self) -> bool {
@@ -138,10 +188,8 @@ impl Lexer {
     }
 
     fn lex_white_space(&mut self) -> Result<Token, &'static str> {
-        if !self.read()?.is_whitespace() {
-            return Err(
-                "Not a sequence of white space characters",
-            );
+        if !self.peek()?.is_whitespace() {
+            return Err("Not a sequence of white space characters");
         }
 
         while !self.is_at_eof() && self.peek()?.is_whitespace() {
@@ -149,6 +197,11 @@ impl Lexer {
         }
 
         Ok(Token::WhiteSpace)
+    }
+
+    fn move_to_new_line(&mut self) {
+        self.row += 1;
+        self.column = 0;
     }
 
     fn lex_comments(&mut self) -> Result<Token, &'static str> {
@@ -159,9 +212,7 @@ impl Lexer {
         match self.read()? {
             '/' => self.lex_line_comment(),
             '*' => self.lex_block_comment(),
-            _ => Err(
-                "Slash is not followed by slash or astrix",
-            ),
+            _ => Err("Slash is not followed by slash or astrix"),
         }
     }
 
@@ -181,6 +232,7 @@ impl Lexer {
 
     fn lex_number(&mut self) -> Result<Token, &'static str> {
         let mut number = String::new();
+        let file_position = self.file_position();
 
         while self.peek()?.is_digit(10) {
             number.push(self.read()?);
@@ -190,11 +242,12 @@ impl Lexer {
             return Err("Not a number");
         }
 
-        Ok(NumberToken::build_token(number))
+        Ok(NumberToken::build_token(number, file_position))
     }
 
     fn lex_string_literal(&mut self) -> Result<Token, &'static str> {
         let mut string_literal = String::new();
+        let file_position = self.file_position();
 
         if self.read()? != '\"' {
             return Err("String literal must start with \"");
@@ -214,7 +267,7 @@ impl Lexer {
 
         self.read()?;
 
-        Ok(StringLiteralToken::build_token(string_literal))
+        Ok(StringLiteralToken::build_token(string_literal, file_position))
     }
 
     fn read_escaped_character(&mut self) -> Result<char, &'static str> {
@@ -235,6 +288,7 @@ impl Lexer {
 
     fn lex_escaped_identifier(&mut self) -> Result<Token, &'static str> {
         let mut escaped_identifier = String::new();
+        let file_position = self.file_position();
         escaped_identifier.push(self.read()?); // Read the \
 
         while !self.peek()?.is_whitespace() {
@@ -245,11 +299,12 @@ impl Lexer {
             return Err("Escaped identifier must not empty");
         }
 
-        Ok(CharacterSequenceToken::build_token(escaped_identifier))
+        Ok(CharacterSequenceToken::build_token(escaped_identifier, file_position))
     }
 
     fn lex_simple_identifier(&mut self) -> Result<Token, &'static str> {
         let mut character_sequence = String::from("");
+        let file_position = self.file_position();
 
         while !self.is_at_eof() && self.peek()?.is_alphabetic() {
             character_sequence.push(self.read()?);
@@ -259,12 +314,14 @@ impl Lexer {
             return Err("Not a character sequence");
         }
 
-        Ok(CharacterSequenceToken::build_token(character_sequence))
+        Ok(CharacterSequenceToken::build_token(character_sequence, file_position))
     }
 
     fn lex_operator(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         match self.get_best_sequence(&OPERATOR_SYMBOLS) {
-            Some(sequence) => OperatorToken::from_sequence(sequence),
+            Some(sequence) => OperatorToken::from_sequence(sequence, file_position),
             _ => Err("Unrecognized operator"),
         }
     }
@@ -287,7 +344,12 @@ impl Lexer {
             return None;
         }
 
-        self.go_to(self.position() + best_sequence.unwrap().len());
+        let best_length = best_sequence.unwrap().len();
+        self.go_to(Mark {
+            position: self.position() + best_length,
+            row: self.row,
+            column: self.column + best_length,
+        });
 
         best_sequence
     }
@@ -310,32 +372,36 @@ impl Lexer {
     }
 
     fn lex_keyword(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         match self.get_best_sequence(&KEYWORD_SYMBOLS) {
-            Some(sequence) => KeywordToken::from_sequence(sequence),
+            Some(sequence) => KeywordToken::from_sequence(sequence, file_position),
             None => Err("Unrecognized keyword"),
         }
     }
 
     fn lex_punctuation(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         match self.read()? {
-            '@' => Ok(PunctuationToken::build_token(Punctuation::Asperand)),
-            '#' => Ok(PunctuationToken::build_token(Punctuation::Pound)),
-            '$' => Ok(PunctuationToken::build_token(Punctuation::Dollar)),
-            '(' => Ok(PunctuationToken::build_token(Punctuation::LeftParentheses)),
-            ')' => Ok(PunctuationToken::build_token(Punctuation::RightParentheses)),
-            '[' => Ok(PunctuationToken::build_token(Punctuation::LeftBracket)),
-            ']' => Ok(PunctuationToken::build_token(Punctuation::RightBracket)),
-            '{' => Ok(PunctuationToken::build_token(Punctuation::LeftBrace)),
-            '}' => Ok(PunctuationToken::build_token(Punctuation::RightBrace)),
-            '\\' => Ok(PunctuationToken::build_token(Punctuation::BackSlash)),
-            ';' => Ok(PunctuationToken::build_token(Punctuation::Semicolon)),
-            ':' => Ok(PunctuationToken::build_token(Punctuation::Colon)),
-            '?' => Ok(PunctuationToken::build_token(Punctuation::QuestionMark)),
-            '`' => Ok(PunctuationToken::build_token(Punctuation::Backtick)),
-            '.' => Ok(PunctuationToken::build_token(Punctuation::Period)),
-            ',' => Ok(PunctuationToken::build_token(Punctuation::Comma)),
-            '\'' => Ok(PunctuationToken::build_token(Punctuation::Apostrophe)),
-            '_' => Ok(PunctuationToken::build_token(Punctuation::Underscore)),
+            '@' => Ok(PunctuationToken::build_token(Punctuation::Asperand, file_position)),
+            '#' => Ok(PunctuationToken::build_token(Punctuation::Pound, file_position)),
+            '$' => Ok(PunctuationToken::build_token(Punctuation::Dollar, file_position)),
+            '(' => Ok(PunctuationToken::build_token(Punctuation::LeftParentheses, file_position)),
+            ')' => Ok(PunctuationToken::build_token(Punctuation::RightParentheses, file_position)),
+            '[' => Ok(PunctuationToken::build_token(Punctuation::LeftBracket, file_position)),
+            ']' => Ok(PunctuationToken::build_token(Punctuation::RightBracket, file_position)),
+            '{' => Ok(PunctuationToken::build_token(Punctuation::LeftBrace, file_position)),
+            '}' => Ok(PunctuationToken::build_token(Punctuation::RightBrace, file_position)),
+            '\\' => Ok(PunctuationToken::build_token(Punctuation::BackSlash, file_position)),
+            ';' => Ok(PunctuationToken::build_token(Punctuation::Semicolon, file_position)),
+            ':' => Ok(PunctuationToken::build_token(Punctuation::Colon, file_position)),
+            '?' => Ok(PunctuationToken::build_token(Punctuation::QuestionMark, file_position)),
+            '`' => Ok(PunctuationToken::build_token(Punctuation::Backtick, file_position)),
+            '.' => Ok(PunctuationToken::build_token(Punctuation::Period, file_position)),
+            ',' => Ok(PunctuationToken::build_token(Punctuation::Comma, file_position)),
+            '\'' => Ok(PunctuationToken::build_token(Punctuation::Apostrophe, file_position)),
+            '_' => Ok(PunctuationToken::build_token(Punctuation::Underscore, file_position)),
             _ => Err("Unrecognized punctuation mark"),
         }
     }
