@@ -1,13 +1,10 @@
 use crate::config::Config;
 
-#[derive(Debug)]
 pub enum CompilationUnitScope {
     All,
     Individual,
 }
 
-
-#[derive(Debug)]
 pub struct CompilationUnit {
     files: Vec<String>,
 }

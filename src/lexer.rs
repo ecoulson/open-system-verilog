@@ -32,7 +32,7 @@ enum LexerOperator {
     Punctuation,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 struct Mark {
     position: usize,
     row: usize,
@@ -56,7 +56,6 @@ pub struct Lexer {
     mark: Option<Mark>,
 }
 
-#[derive(Debug)]
 pub struct FilePosition {
     column: usize,
     row: usize,
@@ -168,7 +167,6 @@ impl Lexer {
             }
         }
 
-        dbg!(&best_mark);
         self.go_to(best_mark);
 
         best_token

@@ -1,7 +1,6 @@
 use std::iter;
 use crate::compilation_unit::CompilationUnitScope;
 
-#[derive(Debug)]
 pub struct Config {
     files: Vec<String>,
     compilation_unit_scope: CompilationUnitScope,

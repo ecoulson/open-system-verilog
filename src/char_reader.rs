@@ -8,7 +8,6 @@ use std::process;
 const BUFFER_SIZE: usize = 8192;
 const BUFFER_SEEK_BACK: i64 = -8192;
 
-#[derive(Debug)]
 pub struct CharReader {
     block: usize,
     seek_position: usize,
