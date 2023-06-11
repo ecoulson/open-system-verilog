@@ -39,6 +39,16 @@ struct Mark {
     column: usize,
 }
 
+impl Mark {
+    fn build(position: usize, row: usize, column: usize) -> Mark {
+        Mark {
+            position,
+            row,
+            column,
+        }
+    }
+}
+
 pub struct Lexer {
     char_reader: CharReader,
     column: usize,
@@ -94,11 +104,7 @@ impl Lexer {
     }
 
     fn mark(&mut self) {
-        self.mark = Some(Mark {
-            position: self.position(),
-            row: self.row,
-            column: self.column,
-        })
+        self.mark = Some(Mark::build(self.position(), self.row, self.column));
     }
 
     fn go_to_mark(&mut self) {
@@ -148,20 +154,12 @@ impl Lexer {
         let file_position = self.file_position();
         let mut best_token =
             ErrorToken::build_token("Failed to read any characters", file_position);
-        let mut best_mark = Mark {
-            row: 1,
-            column: 0,
-            position: 0,
-        };
+        let mut best_mark = Mark::build(0, 1, 0);
 
         for operator in LEXICAL_OPERATIONS {
             self.mark();
             let token = self.execute_lexical_operation(operator);
-            let mark = Mark {
-                row: self.row,
-                column: self.column,
-                position: self.position(),
-            };
+            let mark = Mark::build(self.position(), self.row, self.column);
             self.go_to_mark();
 
             if best_mark.position < mark.position {
@@ -267,7 +265,10 @@ impl Lexer {
 
         self.read()?;
 
-        Ok(StringLiteralToken::build_token(string_literal, file_position))
+        Ok(StringLiteralToken::build_token(
+            string_literal,
+            file_position,
+        ))
     }
 
     fn read_escaped_character(&mut self) -> Result<char, &'static str> {
@@ -299,7 +300,10 @@ impl Lexer {
             return Err("Escaped identifier must not empty");
         }
 
-        Ok(CharacterSequenceToken::build_token(escaped_identifier, file_position))
+        Ok(CharacterSequenceToken::build_token(
+            escaped_identifier,
+            file_position,
+        ))
     }
 
     fn lex_simple_identifier(&mut self) -> Result<Token, &'static str> {
@@ -314,7 +318,10 @@ impl Lexer {
             return Err("Not a character sequence");
         }
 
-        Ok(CharacterSequenceToken::build_token(character_sequence, file_position))
+        Ok(CharacterSequenceToken::build_token(
+            character_sequence,
+            file_position,
+        ))
     }
 
     fn lex_operator(&mut self) -> Result<Token, &'static str> {
@@ -345,11 +352,11 @@ impl Lexer {
         }
 
         let best_length = best_sequence.unwrap().len();
-        self.go_to(Mark {
-            position: self.position() + best_length,
-            row: self.row,
-            column: self.column + best_length,
-        });
+        self.go_to(Mark::build(
+            self.position() + best_length,
+            self.row,
+            self.column + best_length,
+        ));
 
         best_sequence
     }
@@ -384,24 +391,78 @@ impl Lexer {
         let file_position = self.file_position();
 
         match self.read()? {
-            '@' => Ok(PunctuationToken::build_token(Punctuation::Asperand, file_position)),
-            '#' => Ok(PunctuationToken::build_token(Punctuation::Pound, file_position)),
-            '$' => Ok(PunctuationToken::build_token(Punctuation::Dollar, file_position)),
-            '(' => Ok(PunctuationToken::build_token(Punctuation::LeftParentheses, file_position)),
-            ')' => Ok(PunctuationToken::build_token(Punctuation::RightParentheses, file_position)),
-            '[' => Ok(PunctuationToken::build_token(Punctuation::LeftBracket, file_position)),
-            ']' => Ok(PunctuationToken::build_token(Punctuation::RightBracket, file_position)),
-            '{' => Ok(PunctuationToken::build_token(Punctuation::LeftBrace, file_position)),
-            '}' => Ok(PunctuationToken::build_token(Punctuation::RightBrace, file_position)),
-            '\\' => Ok(PunctuationToken::build_token(Punctuation::BackSlash, file_position)),
-            ';' => Ok(PunctuationToken::build_token(Punctuation::Semicolon, file_position)),
-            ':' => Ok(PunctuationToken::build_token(Punctuation::Colon, file_position)),
-            '?' => Ok(PunctuationToken::build_token(Punctuation::QuestionMark, file_position)),
-            '`' => Ok(PunctuationToken::build_token(Punctuation::Backtick, file_position)),
-            '.' => Ok(PunctuationToken::build_token(Punctuation::Period, file_position)),
-            ',' => Ok(PunctuationToken::build_token(Punctuation::Comma, file_position)),
-            '\'' => Ok(PunctuationToken::build_token(Punctuation::Apostrophe, file_position)),
-            '_' => Ok(PunctuationToken::build_token(Punctuation::Underscore, file_position)),
+            '@' => Ok(PunctuationToken::build_token(
+                Punctuation::Asperand,
+                file_position,
+            )),
+            '#' => Ok(PunctuationToken::build_token(
+                Punctuation::Pound,
+                file_position,
+            )),
+            '$' => Ok(PunctuationToken::build_token(
+                Punctuation::Dollar,
+                file_position,
+            )),
+            '(' => Ok(PunctuationToken::build_token(
+                Punctuation::LeftParentheses,
+                file_position,
+            )),
+            ')' => Ok(PunctuationToken::build_token(
+                Punctuation::RightParentheses,
+                file_position,
+            )),
+            '[' => Ok(PunctuationToken::build_token(
+                Punctuation::LeftBracket,
+                file_position,
+            )),
+            ']' => Ok(PunctuationToken::build_token(
+                Punctuation::RightBracket,
+                file_position,
+            )),
+            '{' => Ok(PunctuationToken::build_token(
+                Punctuation::LeftBrace,
+                file_position,
+            )),
+            '}' => Ok(PunctuationToken::build_token(
+                Punctuation::RightBrace,
+                file_position,
+            )),
+            '\\' => Ok(PunctuationToken::build_token(
+                Punctuation::BackSlash,
+                file_position,
+            )),
+            ';' => Ok(PunctuationToken::build_token(
+                Punctuation::Semicolon,
+                file_position,
+            )),
+            ':' => Ok(PunctuationToken::build_token(
+                Punctuation::Colon,
+                file_position,
+            )),
+            '?' => Ok(PunctuationToken::build_token(
+                Punctuation::QuestionMark,
+                file_position,
+            )),
+            '`' => Ok(PunctuationToken::build_token(
+                Punctuation::Backtick,
+                file_position,
+            )),
+            '.' => Ok(PunctuationToken::build_token(
+                Punctuation::Period,
+                file_position,
+            )),
+            ',' => Ok(PunctuationToken::build_token(
+                Punctuation::Comma,
+                file_position,
+            )),
+            '\'' => Ok(PunctuationToken::build_token(
+                Punctuation::Apostrophe,
+                file_position,
+            )),
+            '_' => Ok(PunctuationToken::build_token(
+                Punctuation::Underscore,
+                file_position,
+            )),
             _ => Err("Unrecognized punctuation mark"),
         }
     }
