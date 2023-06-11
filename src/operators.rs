@@ -13,7 +13,7 @@ pub enum Operator {
     BinaryAssignment,
     AdditionAssignment,
     SubtractionAssignment,
-    MultiplcationAssignment,
+    MultiplicationAssignment,
     DivisionAssignment,
     ModuloAssignment,
     BitwiseAndAssignment,

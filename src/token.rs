@@ -153,7 +153,7 @@ impl TokenFromSequence for OperatorToken {
             "+=" => Ok(OperatorToken::build_token(Operator::AdditionAssignment, position)),
             "-=" => Ok(OperatorToken::build_token(Operator::SubtractionAssignment, position)),
             "*=" => Ok(OperatorToken::build_token(
-                Operator::MultiplcationAssignment,
+                Operator::MultiplicationAssignment,
                 position
             )),
             "/=" => Ok(OperatorToken::build_token(Operator::DivisionAssignment, position)),

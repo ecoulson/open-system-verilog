@@ -8,17 +8,18 @@ use std::process;
 const BUFFER_SIZE: usize = 8192;
 const BUFFER_SEEK_BACK: i64 = -8192;
 
+#[derive(Debug)]
 pub struct CharReader {
     block: usize,
     seek_position: usize,
     buffer: [u8; BUFFER_SIZE],
     file: File,
 }
-//
+
 // TODO: If a file is larger than usize::MAX this will cause issues for reading
 // the file. Should really just rely on modular arithmetic
 impl CharReader {
-    pub fn open(file_path: &String) -> CharReader {
+    pub fn open(file_path: &str) -> CharReader {
         let file = File::open(file_path).unwrap_or_else(|error| {
             match error.kind() {
                 ErrorKind::NotFound => eprintln!("File not found at path {}", file_path),
@@ -44,6 +45,10 @@ impl CharReader {
         char_reader.read_into_buffer();
 
         char_reader
+    }
+
+    pub fn has_chars(&mut self) -> bool {
+        !self.peek_char().is_none()
     }
 
     pub fn get_position(&self) -> usize {
@@ -102,6 +107,7 @@ impl CharReader {
     }
 
     fn read_into_buffer(&mut self) {
+        self.buffer.fill(0);
         self.file.read(&mut self.buffer).unwrap_or_else(|error| {
             match error.kind() {
                 ErrorKind::Interrupted => {
@@ -111,5 +117,106 @@ impl CharReader {
             }
             process::exit(1)
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CharReader, BUFFER_SIZE};
+    use std::io::prelude::Write;
+    use std::io::Error;
+    use std::path::PathBuf;
+    use std::fs::File;
+    use tempfile::{tempdir, TempDir};
+
+    fn create_test_file(
+        dir: &TempDir,
+        file_name: &str,
+        block_count: usize,
+    ) -> Result<PathBuf, Error> {
+        let file_path = dir.path().join(file_name);
+        let mut file = File::create(&file_path)?;
+        let mut content: [u8; BUFFER_SIZE] = [b'6'; BUFFER_SIZE];
+
+        for i in 0..block_count {
+            let block_symbol = i as u8 + b'0';
+            content.fill(block_symbol);
+            file.write(&content)?;
+        }
+
+        dbg!(File::open(file_path.to_str().unwrap())?);
+        Ok(file_path)
+    }
+
+    #[test]
+    fn read_one_buffer() -> Result<(), Error> {
+        let dir = tempdir()?;
+        let file_path = create_test_file(&dir, "single_block.txt", 1)?;
+        let file_path = file_path.to_str().unwrap();
+
+        let mut reader = CharReader::open(file_path);
+
+        while reader.has_chars() {
+            let char = (reader.get_position() / BUFFER_SIZE) as u8 + b'0';
+            assert_eq!(reader.read_char().unwrap(), char::from(char));
+        }
+
+        assert_eq!(reader.get_position(), BUFFER_SIZE);
+        assert_eq!(reader.block, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn read_multiple_buffers() -> Result<(), Error> {
+        const BLOCKS: usize = 5;
+        const FILE_SIZE: usize = BUFFER_SIZE * BLOCKS;
+
+        let dir = tempdir()?;
+        let file_path = create_test_file(&dir, "multiple_blocks.txt", BLOCKS)?;
+        let file_path = file_path.to_str().unwrap();
+
+        let mut reader = CharReader::open(file_path);
+
+        while reader.has_chars() {
+            let char = (reader.get_position() / BUFFER_SIZE) as u8 + b'0';
+            assert_eq!(reader.read_char().unwrap(), char::from(char));
+        }
+
+        assert_eq!(reader.get_position(), FILE_SIZE);
+        assert_eq!(reader.block, BLOCKS);
+
+        Ok(())
+    }
+
+    #[test]
+    fn read_and_seek_across_block() -> Result<(), Error> {
+        const BLOCKS: usize = 5;
+        const FILE_SIZE: usize = BUFFER_SIZE * BLOCKS;
+
+        let dir = tempdir()?;
+        let file_path = create_test_file(&dir, "multiple_blocks.txt", BLOCKS)?;
+        let file_path = file_path.to_str().unwrap();
+
+        let mut reader = CharReader::open(file_path);
+
+        while reader.has_chars() {
+            let char = (reader.get_position() / BUFFER_SIZE) as u8 + b'0';
+            assert_eq!(reader.read_char().unwrap(), char::from(char));
+        }
+
+        let mut reader = CharReader::open(file_path);
+        reader.seek_from_start(BUFFER_SIZE);
+        reader.seek_from_start(BUFFER_SIZE - 1);
+
+        while reader.has_chars() {
+            let char = (reader.get_position() / BUFFER_SIZE) as u8 + b'0';
+            assert_eq!(reader.read_char().unwrap(), char::from(char));
+        }
+
+        assert_eq!(reader.get_position(), FILE_SIZE);
+        assert_eq!(reader.block, BLOCKS);
+
+        Ok(())
     }
 }
