@@ -6,3 +6,4 @@ pub mod operators;
 pub mod punctuation;
 pub mod keywords;
 pub mod token;
+pub mod token_stream;

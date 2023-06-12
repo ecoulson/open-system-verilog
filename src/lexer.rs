@@ -65,7 +65,7 @@ pub struct FilePosition {
 }
 
 impl FilePosition {
-    fn new(row: usize, column: usize) -> FilePosition {
+    pub fn new(row: usize, column: usize) -> FilePosition {
         FilePosition { column, row }
     }
 }
