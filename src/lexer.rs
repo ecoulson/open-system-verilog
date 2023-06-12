@@ -13,12 +13,12 @@ use crate::token::{
 const LEXICAL_OPERATIONS: [LexerOperator; 8] = [
     LexerOperator::WhiteSpace,
     LexerOperator::Comment,
-    LexerOperator::Number,
-    LexerOperator::StringLiteral,
-    LexerOperator::CharacterSequence,
     LexerOperator::Operator,
     LexerOperator::Keyword,
     LexerOperator::Punctuation,
+    LexerOperator::Number,
+    LexerOperator::StringLiteral,
+    LexerOperator::CharacterSequence,
 ];
 
 enum LexerOperator {
@@ -168,7 +168,9 @@ impl Lexer {
             let mark = Mark::build(self.position(), self.row, self.column);
             self.go_to_mark();
 
-            if best_mark.position < mark.position {
+            if matches!(best_token, Token::Error(_)) && !matches!(token, Token::Error(_))
+                || best_mark.position < mark.position
+            {
                 best_mark = mark;
                 best_token = token;
             }
@@ -205,11 +207,13 @@ impl Lexer {
     }
 
     fn lex_comments(&mut self) -> Result<Token, &'static str> {
-        if self.read()? != '/' {
+        if self.peek()? != '/' {
             return Err("Does not start with slash");
         }
 
-        match self.read()? {
+        self.read()?;
+
+        match self.peek()? {
             '/' => self.lex_line_comment(),
             '*' => self.lex_block_comment(),
             _ => Err("Slash is not followed by slash or astrix"),
@@ -249,9 +253,11 @@ impl Lexer {
         let mut string_literal = String::new();
         let file_position = self.file_position();
 
-        if self.read()? != '\"' {
+        if self.peek()? != '\"' {
             return Err("String literal must start with \"");
         }
+
+        self.read()?;
 
         while self.can_read() && self.peek()? != '"' {
             let ch = self.read()?;
@@ -354,7 +360,8 @@ impl Lexer {
             return None;
         }
 
-        let best_length = best_sequence.unwrap().len();
+
+        let best_length = best_sequence.unwrap().bytes().len();
         self.go_to(Mark::build(
             self.position() + best_length,
             self.row,
@@ -375,7 +382,7 @@ impl Lexer {
     }
 
     fn compare_sequences(best_sequence: &'static str, sequence: &'static str) -> &'static str {
-        match sequence.chars().count().cmp(&sequence.chars().count()) {
+        match sequence.chars().count().cmp(&best_sequence.chars().count()) {
             Ordering::Greater | Ordering::Equal => sequence,
             _ => best_sequence,
         }
@@ -393,7 +400,7 @@ impl Lexer {
     fn lex_punctuation(&mut self) -> Result<Token, &'static str> {
         let file_position = self.file_position();
 
-        match self.read()? {
+        let result = match self.peek()? {
             '@' => Ok(PunctuationToken::build_token(
                 Punctuation::Asperand,
                 file_position,
@@ -467,7 +474,11 @@ impl Lexer {
                 file_position,
             )),
             _ => Err("Unrecognized punctuation mark"),
-        }
+        };
+
+        self.read()?;
+
+        result
     }
 }
 
@@ -477,8 +488,10 @@ mod tests {
     use std::io::{Error, Write};
     use std::path::PathBuf;
 
+    use crate::operators::Operator;
     use crate::token::{
-        BuildToken, CharacterSequenceToken, ErrorToken, NumberToken, StringLiteralToken,
+        BuildToken, CharacterSequenceToken, ErrorToken, NumberToken, OperatorToken,
+        StringLiteralToken,
     };
 
     use super::{FilePosition, Lexer, Token};
@@ -639,6 +652,97 @@ Monk\"",
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "abcXYZ \\@#art\\()\n")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_operators() -> Result<(), Error> {
+        let expected_tokens = vec![
+            OperatorToken::build_token(Operator::Addition, FilePosition::new(1, 1)),
+            OperatorToken::build_token(Operator::Subtraction, FilePosition::new(1, 3)),
+            OperatorToken::build_token(Operator::Not, FilePosition::new(1, 5)),
+            OperatorToken::build_token(Operator::Negation, FilePosition::new(1, 7)),
+            OperatorToken::build_token(Operator::BitwiseAnd, FilePosition::new(1, 9)),
+            OperatorToken::build_token(Operator::Nand, FilePosition::new(1, 11)),
+            OperatorToken::build_token(Operator::BitwiseOr, FilePosition::new(1, 14)),
+            OperatorToken::build_token(Operator::Nor, FilePosition::new(1, 16)),
+            OperatorToken::build_token(Operator::Xor, FilePosition::new(1, 19)),
+            OperatorToken::build_token(Operator::Xnor, FilePosition::new(1, 21)),
+            OperatorToken::build_token(Operator::Xnor, FilePosition::new(1, 24)),
+            OperatorToken::build_token(Operator::Increment, FilePosition::new(1, 27)),
+            OperatorToken::build_token(Operator::Decrement, FilePosition::new(1, 30)),
+            OperatorToken::build_token(Operator::Exponentiation, FilePosition::new(1, 33)),
+            OperatorToken::build_token(Operator::Multiplication, FilePosition::new(1, 36)),
+            OperatorToken::build_token(Operator::Division, FilePosition::new(1, 38)),
+            OperatorToken::build_token(Operator::Modulo, FilePosition::new(1, 40)),
+            OperatorToken::build_token(Operator::LogicalRightShift, FilePosition::new(2, 1)),
+            OperatorToken::build_token(Operator::LogicalLeftShift, FilePosition::new(2, 4)),
+            OperatorToken::build_token(Operator::ArithmeticRightShift, FilePosition::new(2, 7)),
+            OperatorToken::build_token(Operator::ArithmeticLeftShift, FilePosition::new(2, 11)),
+            OperatorToken::build_token(Operator::LessThan, FilePosition::new(2, 15)),
+            OperatorToken::build_token(Operator::LessThanOrEqualTo, FilePosition::new(2, 17)),
+            OperatorToken::build_token(Operator::GreaterThan, FilePosition::new(2, 20)),
+            OperatorToken::build_token(Operator::GreaterThanOrEqualTo, FilePosition::new(2, 22)),
+            OperatorToken::build_token(Operator::Inside, FilePosition::new(2, 25)),
+            OperatorToken::build_token(Operator::Distribution, FilePosition::new(2, 32)),
+            OperatorToken::build_token(Operator::LogicalEquality, FilePosition::new(2, 37)),
+            OperatorToken::build_token(Operator::LogicalInequality, FilePosition::new(2, 40)),
+            OperatorToken::build_token(Operator::CaseEquality, FilePosition::new(2, 43)),
+            OperatorToken::build_token(Operator::CaseInequality, FilePosition::new(2, 47)),
+            OperatorToken::build_token(Operator::WildcardEquality, FilePosition::new(3, 1)),
+            OperatorToken::build_token(Operator::WildcardInequality, FilePosition::new(3, 5)),
+            OperatorToken::build_token(Operator::LogicalAnd, FilePosition::new(3, 9)),
+            OperatorToken::build_token(Operator::LogicalOr, FilePosition::new(3, 12)),
+            OperatorToken::build_token(Operator::Implication, FilePosition::new(3, 15)),
+            OperatorToken::build_token(Operator::Equivalence, FilePosition::new(3, 18)),
+            OperatorToken::build_token(Operator::BinaryAssignment, FilePosition::new(3, 22)),
+            OperatorToken::build_token(Operator::AdditionAssignment, FilePosition::new(3, 24)),
+            OperatorToken::build_token(Operator::SubtractionAssignment, FilePosition::new(3, 27)),
+            OperatorToken::build_token(
+                Operator::MultiplicationAssignment,
+                FilePosition::new(3, 30),
+            ),
+            OperatorToken::build_token(Operator::DivisionAssignment, FilePosition::new(3, 33)),
+            OperatorToken::build_token(Operator::ModuloAssignment, FilePosition::new(3, 36)),
+            OperatorToken::build_token(Operator::BitwiseAndAssignment, FilePosition::new(3, 39)),
+            OperatorToken::build_token(Operator::BitwiseXorAssignment, FilePosition::new(3, 42)),
+            OperatorToken::build_token(Operator::BitwiseOrAssignment, FilePosition::new(3, 45)),
+            OperatorToken::build_token(
+                Operator::LogicalLeftShiftAssignment,
+                FilePosition::new(4, 1),
+            ),
+            OperatorToken::build_token(
+                Operator::LogicalRightShiftAssignment,
+                FilePosition::new(4, 5),
+            ),
+            OperatorToken::build_token(
+                Operator::ArithmeticLeftShiftAssignment,
+                FilePosition::new(4, 9),
+            ),
+            OperatorToken::build_token(
+                Operator::ArithmeticRightShiftAssignment,
+                FilePosition::new(4, 14),
+            ),
+            Token::EOF(FilePosition::new(4, 18)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "+ - ! ~ & ~& | ~| ^ ~^ ^~ ++ -- ** * / %
+>> << >>> <<< < <= > >= inside dist == != === !==
+==? !=? && || -> <-> = += -= *= /= %= &= ^= |=
+<<= >>= <<<= >>>=",
+        )?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
