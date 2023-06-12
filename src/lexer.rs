@@ -489,9 +489,10 @@ mod tests {
 
     use crate::keywords::Keyword;
     use crate::operators::Operator;
+    use crate::punctuation::Punctuation;
     use crate::token::{
         BuildToken, CharacterSequenceToken, ErrorToken, KeywordToken, NumberToken, OperatorToken,
-        StringLiteralToken,
+        StringLiteralToken, PunctuationToken,
     };
 
     use super::{FilePosition, Lexer, Token};
@@ -1257,6 +1258,61 @@ wor
 xnor
 xor",
         )?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_punctuation() -> Result<(), Error> {
+        let expected_tokens = vec![
+            PunctuationToken::build_token(Punctuation::Asperand, FilePosition::new(1, 1)),
+            PunctuationToken::build_token(Punctuation::Pound, FilePosition::new(2, 1)),
+            PunctuationToken::build_token(Punctuation::Dollar, FilePosition::new(3, 1)),
+            PunctuationToken::build_token(Punctuation::LeftParentheses, FilePosition::new(4, 1)),
+            PunctuationToken::build_token(Punctuation::RightParentheses, FilePosition::new(5, 1)),
+            PunctuationToken::build_token(Punctuation::LeftBracket, FilePosition::new(6, 1)),
+            PunctuationToken::build_token(Punctuation::RightBracket, FilePosition::new(7, 1)),
+            PunctuationToken::build_token(Punctuation::LeftBrace, FilePosition::new(8, 1)),
+            PunctuationToken::build_token(Punctuation::RightBrace, FilePosition::new(9, 1)),
+            PunctuationToken::build_token(Punctuation::BackSlash, FilePosition::new(10, 1)),
+            PunctuationToken::build_token(Punctuation::Semicolon, FilePosition::new(11, 1)),
+            PunctuationToken::build_token(Punctuation::Colon, FilePosition::new(12, 1)),
+            PunctuationToken::build_token(Punctuation::QuestionMark, FilePosition::new(13, 1)),
+            PunctuationToken::build_token(Punctuation::Backtick, FilePosition::new(14, 1)),
+            PunctuationToken::build_token(Punctuation::Period, FilePosition::new(15, 1)),
+            PunctuationToken::build_token(Punctuation::Comma, FilePosition::new(16, 1)),
+            PunctuationToken::build_token(Punctuation::Apostrophe, FilePosition::new(17, 1)),
+            PunctuationToken::build_token(Punctuation::Underscore, FilePosition::new(18, 1)),
+            Token::EOF(FilePosition::new(18, 2)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "@
+#
+$
+(
+)
+[
+]
+{
+}
+\\
+;
+:
+?
+`
+.
+,
+'
+_")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
