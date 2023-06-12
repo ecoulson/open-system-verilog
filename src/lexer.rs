@@ -4,7 +4,7 @@ use crate::char_reader::CharReader;
 use crate::keywords::KEYWORD_SYMBOLS;
 use crate::operators::OPERATOR_SYMBOLS;
 use crate::punctuation::Punctuation;
-use crate::token::{BuildToken, ErrorToken, Token, EscapedIdentifierToken};
+use crate::token::{BuildToken, ErrorToken, EscapedIdentifierToken, Token};
 use crate::token::{
     CharacterSequenceToken, KeywordToken, NumberToken, OperatorToken, PunctuationToken,
     StringLiteralToken, TokenFromSequence,
@@ -68,6 +68,14 @@ pub struct FilePosition {
 impl FilePosition {
     pub fn new(row: usize, column: usize) -> FilePosition {
         FilePosition { column, row }
+    }
+
+    pub fn column(&self) -> usize {
+        self.column
+    }
+
+    pub fn row(&self) -> usize {
+        self.row
     }
 }
 
@@ -313,9 +321,7 @@ impl Lexer {
 
     fn lex_escaped_identifier(&mut self) -> Result<Token, &'static str> {
         if self.peek()? != '\\' {
-            return Err(
-                "Escaped identifier must start with \\",
-            );
+            return Err("Escaped identifier must start with \\");
         }
 
         let mut identifier = String::new();
@@ -497,6 +503,7 @@ mod tests {
         BuildToken, CharacterSequenceToken, ErrorToken, EscapedIdentifierToken, KeywordToken,
         NumberToken, OperatorToken, PunctuationToken, StringLiteralToken,
     };
+    use crate::token_stream::TokenStream;
 
     use super::{FilePosition, Lexer, Token};
     use tempfile::{tempdir, TempDir};
@@ -512,6 +519,18 @@ mod tests {
         Ok(file_path)
     }
 
+    fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<Token>) {
+        let token_iterator = tokens.iter().enumerate();
+        let mut length = 0;
+
+        for (i, token) in token_iterator {
+            assert_eq!(token, &expected_tokens[i]);
+            length += 1;
+        }
+
+        assert_eq!(length, expected_tokens.len());
+    }
+
     #[test]
     fn should_lex_empty_file() -> Result<(), Error> {
         let expected_tokens = vec![Token::EOF(FilePosition::new(1, 1))];
@@ -520,8 +539,8 @@ mod tests {
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
+        assert_tokens_equal(tokens, expected_tokens);
 
-        assert_eq!(tokens.len(), expected_tokens.len());
         dir.close()?;
 
         Ok(())
@@ -535,11 +554,8 @@ mod tests {
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
+        assert_tokens_equal(tokens, expected_tokens);
 
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
         dir.close()?;
 
         Ok(())
@@ -561,12 +577,7 @@ mod tests {
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -582,12 +593,7 @@ mod tests {
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -613,12 +619,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -634,12 +635,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -655,12 +651,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -679,12 +670,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -703,12 +689,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -794,12 +775,7 @@ Monk\"",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -1308,12 +1284,7 @@ xor",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
-
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
-        dir.close()?;
+        assert_tokens_equal(tokens, expected_tokens);
 
         Ok(())
     }
@@ -1366,11 +1337,8 @@ _",
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
+        assert_tokens_equal(tokens, expected_tokens);
 
-        assert_eq!(tokens.len(), expected_tokens.len());
-        for i in 0..tokens.len() {
-            assert_eq!(tokens[i], expected_tokens[i]);
-        }
         dir.close()?;
 
         Ok(())
