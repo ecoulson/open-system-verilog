@@ -9,6 +9,7 @@ use crate::token::{
     CharacterSequenceToken, KeywordToken, NumberToken, OperatorToken, PunctuationToken,
     StringLiteralToken, TokenFromSequence,
 };
+use crate::token_stream::TokenStream;
 
 const LEXICAL_OPERATIONS: [LexerOperator; 9] = [
     LexerOperator::WhiteSpace,
@@ -123,7 +124,7 @@ impl Lexer {
         self.go_to(self.mark.unwrap());
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(&mut self) -> TokenStream {
         let mut tokens = Vec::new();
 
         while self.can_read() {
@@ -135,7 +136,7 @@ impl Lexer {
 
         tokens.push(Token::EOF(self.file_position()));
 
-        tokens
+        TokenStream::new(tokens)
     }
 
     fn execute_lexical_operation(&mut self, operation: LexerOperator) -> Token {
