@@ -360,7 +360,6 @@ impl Lexer {
             return None;
         }
 
-
         let best_length = best_sequence.unwrap().bytes().len();
         self.go_to(Mark::build(
             self.position() + best_length,
@@ -488,9 +487,10 @@ mod tests {
     use std::io::{Error, Write};
     use std::path::PathBuf;
 
+    use crate::keywords::Keyword;
     use crate::operators::Operator;
     use crate::token::{
-        BuildToken, CharacterSequenceToken, ErrorToken, NumberToken, OperatorToken,
+        BuildToken, CharacterSequenceToken, ErrorToken, KeywordToken, NumberToken, OperatorToken,
         StringLiteralToken,
     };
 
@@ -742,6 +742,520 @@ Monk\"",
 >> << >>> <<< < <= > >= inside dist == != === !==
 ==? !=? && || -> <-> = += -= *= /= %= &= ^= |=
 <<= >>= <<<= >>>=",
+        )?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_keywords() -> Result<(), Error> {
+        let expected_tokens = vec![
+            KeywordToken::build_token(Keyword::AcceptOn, FilePosition::new(1, 1)),
+            KeywordToken::build_token(Keyword::Alias, FilePosition::new(2, 1)),
+            KeywordToken::build_token(Keyword::Always, FilePosition::new(3, 1)),
+            KeywordToken::build_token(Keyword::AlwaysComb, FilePosition::new(4, 1)),
+            KeywordToken::build_token(Keyword::AlwaysFF, FilePosition::new(5, 1)),
+            KeywordToken::build_token(Keyword::AlwaysLatch, FilePosition::new(6, 1)),
+            KeywordToken::build_token(Keyword::And, FilePosition::new(7, 1)),
+            KeywordToken::build_token(Keyword::Assert, FilePosition::new(8, 1)),
+            KeywordToken::build_token(Keyword::Assign, FilePosition::new(9, 1)),
+            KeywordToken::build_token(Keyword::Assume, FilePosition::new(10, 1)),
+            KeywordToken::build_token(Keyword::Automatic, FilePosition::new(11, 1)),
+            KeywordToken::build_token(Keyword::Before, FilePosition::new(12, 1)),
+            KeywordToken::build_token(Keyword::Begin, FilePosition::new(13, 1)),
+            KeywordToken::build_token(Keyword::Bind, FilePosition::new(14, 1)),
+            KeywordToken::build_token(Keyword::Bins, FilePosition::new(15, 1)),
+            KeywordToken::build_token(Keyword::Binsof, FilePosition::new(16, 1)),
+            KeywordToken::build_token(Keyword::Bit, FilePosition::new(17, 1)),
+            KeywordToken::build_token(Keyword::Break, FilePosition::new(18, 1)),
+            KeywordToken::build_token(Keyword::Buf, FilePosition::new(19, 1)),
+            KeywordToken::build_token(Keyword::Bufif0, FilePosition::new(20, 1)),
+            KeywordToken::build_token(Keyword::Bufif1, FilePosition::new(21, 1)),
+            KeywordToken::build_token(Keyword::Byte, FilePosition::new(22, 1)),
+            KeywordToken::build_token(Keyword::Case, FilePosition::new(23, 1)),
+            KeywordToken::build_token(Keyword::Casex, FilePosition::new(24, 1)),
+            KeywordToken::build_token(Keyword::Casez, FilePosition::new(25, 1)),
+            KeywordToken::build_token(Keyword::Cell, FilePosition::new(26, 1)),
+            KeywordToken::build_token(Keyword::Chandle, FilePosition::new(27, 1)),
+            KeywordToken::build_token(Keyword::Checker, FilePosition::new(28, 1)),
+            KeywordToken::build_token(Keyword::Class, FilePosition::new(29, 1)),
+            KeywordToken::build_token(Keyword::Clocking, FilePosition::new(30, 1)),
+            KeywordToken::build_token(Keyword::Cmos, FilePosition::new(31, 1)),
+            KeywordToken::build_token(Keyword::Config, FilePosition::new(32, 1)),
+            KeywordToken::build_token(Keyword::Const, FilePosition::new(33, 1)),
+            KeywordToken::build_token(Keyword::Constraint, FilePosition::new(34, 1)),
+            KeywordToken::build_token(Keyword::Context, FilePosition::new(35, 1)),
+            KeywordToken::build_token(Keyword::Continue, FilePosition::new(36, 1)),
+            KeywordToken::build_token(Keyword::Cover, FilePosition::new(37, 1)),
+            KeywordToken::build_token(Keyword::Covergroup, FilePosition::new(38, 1)),
+            KeywordToken::build_token(Keyword::Coverpoint, FilePosition::new(39, 1)),
+            KeywordToken::build_token(Keyword::Cross, FilePosition::new(40, 1)),
+            KeywordToken::build_token(Keyword::Deassign, FilePosition::new(41, 1)),
+            KeywordToken::build_token(Keyword::Default, FilePosition::new(42, 1)),
+            KeywordToken::build_token(Keyword::Defparam, FilePosition::new(43, 1)),
+            KeywordToken::build_token(Keyword::Design, FilePosition::new(44, 1)),
+            KeywordToken::build_token(Keyword::Disable, FilePosition::new(45, 1)),
+            KeywordToken::build_token(Keyword::Do, FilePosition::new(46, 1)),
+            KeywordToken::build_token(Keyword::Edge, FilePosition::new(47, 1)),
+            KeywordToken::build_token(Keyword::Else, FilePosition::new(48, 1)),
+            KeywordToken::build_token(Keyword::End, FilePosition::new(49, 1)),
+            KeywordToken::build_token(Keyword::Endcase, FilePosition::new(50, 1)),
+            KeywordToken::build_token(Keyword::Endchecker, FilePosition::new(51, 1)),
+            KeywordToken::build_token(Keyword::Endclass, FilePosition::new(52, 1)),
+            KeywordToken::build_token(Keyword::Endclocking, FilePosition::new(53, 1)),
+            KeywordToken::build_token(Keyword::Endconfig, FilePosition::new(54, 1)),
+            KeywordToken::build_token(Keyword::Endfunction, FilePosition::new(55, 1)),
+            KeywordToken::build_token(Keyword::Endgenerate, FilePosition::new(56, 1)),
+            KeywordToken::build_token(Keyword::Endgroup, FilePosition::new(57, 1)),
+            KeywordToken::build_token(Keyword::Endinterface, FilePosition::new(58, 1)),
+            KeywordToken::build_token(Keyword::Endmodule, FilePosition::new(59, 1)),
+            KeywordToken::build_token(Keyword::Endpackage, FilePosition::new(60, 1)),
+            KeywordToken::build_token(Keyword::Endprimitive, FilePosition::new(61, 1)),
+            KeywordToken::build_token(Keyword::Endprogram, FilePosition::new(62, 1)),
+            KeywordToken::build_token(Keyword::Endproperty, FilePosition::new(63, 1)),
+            KeywordToken::build_token(Keyword::Endspecify, FilePosition::new(64, 1)),
+            KeywordToken::build_token(Keyword::Endsequence, FilePosition::new(65, 1)),
+            KeywordToken::build_token(Keyword::Endtable, FilePosition::new(66, 1)),
+            KeywordToken::build_token(Keyword::Endtask, FilePosition::new(67, 1)),
+            KeywordToken::build_token(Keyword::Enum, FilePosition::new(68, 1)),
+            KeywordToken::build_token(Keyword::Event, FilePosition::new(69, 1)),
+            KeywordToken::build_token(Keyword::Eventually, FilePosition::new(70, 1)),
+            KeywordToken::build_token(Keyword::Expect, FilePosition::new(71, 1)),
+            KeywordToken::build_token(Keyword::Export, FilePosition::new(72, 1)),
+            KeywordToken::build_token(Keyword::Extends, FilePosition::new(73, 1)),
+            KeywordToken::build_token(Keyword::Extern, FilePosition::new(74, 1)),
+            KeywordToken::build_token(Keyword::Final, FilePosition::new(75, 1)),
+            KeywordToken::build_token(Keyword::FirstMatch, FilePosition::new(76, 1)),
+            KeywordToken::build_token(Keyword::For, FilePosition::new(77, 1)),
+            KeywordToken::build_token(Keyword::Force, FilePosition::new(78, 1)),
+            KeywordToken::build_token(Keyword::Foreach, FilePosition::new(79, 1)),
+            KeywordToken::build_token(Keyword::Forever, FilePosition::new(80, 1)),
+            KeywordToken::build_token(Keyword::Fork, FilePosition::new(81, 1)),
+            KeywordToken::build_token(Keyword::Forkjoin, FilePosition::new(82, 1)),
+            KeywordToken::build_token(Keyword::Function, FilePosition::new(83, 1)),
+            KeywordToken::build_token(Keyword::Generate, FilePosition::new(84, 1)),
+            KeywordToken::build_token(Keyword::Genvar, FilePosition::new(85, 1)),
+            KeywordToken::build_token(Keyword::Global, FilePosition::new(86, 1)),
+            KeywordToken::build_token(Keyword::Highz0, FilePosition::new(87, 1)),
+            KeywordToken::build_token(Keyword::Highz1, FilePosition::new(88, 1)),
+            KeywordToken::build_token(Keyword::If, FilePosition::new(89, 1)),
+            KeywordToken::build_token(Keyword::Iff, FilePosition::new(90, 1)),
+            KeywordToken::build_token(Keyword::Ifnone, FilePosition::new(91, 1)),
+            KeywordToken::build_token(Keyword::IgnoreBins, FilePosition::new(92, 1)),
+            KeywordToken::build_token(Keyword::IllegalBins, FilePosition::new(93, 1)),
+            KeywordToken::build_token(Keyword::Implements, FilePosition::new(94, 1)),
+            KeywordToken::build_token(Keyword::Implies, FilePosition::new(95, 1)),
+            KeywordToken::build_token(Keyword::Import, FilePosition::new(96, 1)),
+            KeywordToken::build_token(Keyword::Incdir, FilePosition::new(97, 1)),
+            KeywordToken::build_token(Keyword::Include, FilePosition::new(98, 1)),
+            KeywordToken::build_token(Keyword::Initial, FilePosition::new(99, 1)),
+            KeywordToken::build_token(Keyword::Inout, FilePosition::new(100, 1)),
+            KeywordToken::build_token(Keyword::Input, FilePosition::new(101, 1)),
+            KeywordToken::build_token(Keyword::Instance, FilePosition::new(102, 1)),
+            KeywordToken::build_token(Keyword::Int, FilePosition::new(103, 1)),
+            KeywordToken::build_token(Keyword::Integer, FilePosition::new(104, 1)),
+            KeywordToken::build_token(Keyword::Interconnect, FilePosition::new(105, 1)),
+            KeywordToken::build_token(Keyword::Interface, FilePosition::new(106, 1)),
+            KeywordToken::build_token(Keyword::Intersect, FilePosition::new(107, 1)),
+            KeywordToken::build_token(Keyword::Join, FilePosition::new(108, 1)),
+            KeywordToken::build_token(Keyword::JoinAny, FilePosition::new(109, 1)),
+            KeywordToken::build_token(Keyword::JoinNone, FilePosition::new(110, 1)),
+            KeywordToken::build_token(Keyword::Large, FilePosition::new(111, 1)),
+            KeywordToken::build_token(Keyword::Let, FilePosition::new(112, 1)),
+            KeywordToken::build_token(Keyword::Liblist, FilePosition::new(113, 1)),
+            KeywordToken::build_token(Keyword::Library, FilePosition::new(114, 1)),
+            KeywordToken::build_token(Keyword::Local, FilePosition::new(115, 1)),
+            KeywordToken::build_token(Keyword::Localparam, FilePosition::new(116, 1)),
+            KeywordToken::build_token(Keyword::Logic, FilePosition::new(117, 1)),
+            KeywordToken::build_token(Keyword::Longint, FilePosition::new(118, 1)),
+            KeywordToken::build_token(Keyword::Macromodule, FilePosition::new(119, 1)),
+            KeywordToken::build_token(Keyword::Matches, FilePosition::new(120, 1)),
+            KeywordToken::build_token(Keyword::Medium, FilePosition::new(121, 1)),
+            KeywordToken::build_token(Keyword::Modport, FilePosition::new(122, 1)),
+            KeywordToken::build_token(Keyword::Module, FilePosition::new(123, 1)),
+            KeywordToken::build_token(Keyword::Nand, FilePosition::new(124, 1)),
+            KeywordToken::build_token(Keyword::Negedge, FilePosition::new(125, 1)),
+            KeywordToken::build_token(Keyword::Nettype, FilePosition::new(126, 1)),
+            KeywordToken::build_token(Keyword::New, FilePosition::new(127, 1)),
+            KeywordToken::build_token(Keyword::Nexttime, FilePosition::new(128, 1)),
+            KeywordToken::build_token(Keyword::Nmos, FilePosition::new(129, 1)),
+            KeywordToken::build_token(Keyword::Nor, FilePosition::new(130, 1)),
+            KeywordToken::build_token(Keyword::Noshowcancelled, FilePosition::new(131, 1)),
+            KeywordToken::build_token(Keyword::Not, FilePosition::new(132, 1)),
+            KeywordToken::build_token(Keyword::Notif0, FilePosition::new(133, 1)),
+            KeywordToken::build_token(Keyword::Notif1, FilePosition::new(134, 1)),
+            KeywordToken::build_token(Keyword::Null, FilePosition::new(135, 1)),
+            KeywordToken::build_token(Keyword::Or, FilePosition::new(136, 1)),
+            KeywordToken::build_token(Keyword::Output, FilePosition::new(137, 1)),
+            KeywordToken::build_token(Keyword::Package, FilePosition::new(138, 1)),
+            KeywordToken::build_token(Keyword::Packed, FilePosition::new(139, 1)),
+            KeywordToken::build_token(Keyword::Parameter, FilePosition::new(140, 1)),
+            KeywordToken::build_token(Keyword::Pmos, FilePosition::new(141, 1)),
+            KeywordToken::build_token(Keyword::Posedge, FilePosition::new(142, 1)),
+            KeywordToken::build_token(Keyword::Primitive, FilePosition::new(143, 1)),
+            KeywordToken::build_token(Keyword::Priority, FilePosition::new(144, 1)),
+            KeywordToken::build_token(Keyword::Program, FilePosition::new(145, 1)),
+            KeywordToken::build_token(Keyword::Property, FilePosition::new(146, 1)),
+            KeywordToken::build_token(Keyword::Protected, FilePosition::new(147, 1)),
+            KeywordToken::build_token(Keyword::Pull0, FilePosition::new(148, 1)),
+            KeywordToken::build_token(Keyword::Pull1, FilePosition::new(149, 1)),
+            KeywordToken::build_token(Keyword::Pulldown, FilePosition::new(150, 1)),
+            KeywordToken::build_token(Keyword::Pullup, FilePosition::new(151, 1)),
+            KeywordToken::build_token(Keyword::PulsestyleOndetect, FilePosition::new(152, 1)),
+            KeywordToken::build_token(Keyword::PulsestyleOnevent, FilePosition::new(153, 1)),
+            KeywordToken::build_token(Keyword::Pure, FilePosition::new(154, 1)),
+            KeywordToken::build_token(Keyword::Rand, FilePosition::new(155, 1)),
+            KeywordToken::build_token(Keyword::Randc, FilePosition::new(156, 1)),
+            KeywordToken::build_token(Keyword::Randcase, FilePosition::new(157, 1)),
+            KeywordToken::build_token(Keyword::Randsequence, FilePosition::new(158, 1)),
+            KeywordToken::build_token(Keyword::Rcmos, FilePosition::new(159, 1)),
+            KeywordToken::build_token(Keyword::Real, FilePosition::new(160, 1)),
+            KeywordToken::build_token(Keyword::Realtime, FilePosition::new(161, 1)),
+            KeywordToken::build_token(Keyword::Ref, FilePosition::new(162, 1)),
+            KeywordToken::build_token(Keyword::Reg, FilePosition::new(163, 1)),
+            KeywordToken::build_token(Keyword::RejectOn, FilePosition::new(164, 1)),
+            KeywordToken::build_token(Keyword::Release, FilePosition::new(165, 1)),
+            KeywordToken::build_token(Keyword::Repeat, FilePosition::new(166, 1)),
+            KeywordToken::build_token(Keyword::Restrict, FilePosition::new(167, 1)),
+            KeywordToken::build_token(Keyword::Return, FilePosition::new(168, 1)),
+            KeywordToken::build_token(Keyword::Rnmos, FilePosition::new(169, 1)),
+            KeywordToken::build_token(Keyword::Rpmos, FilePosition::new(170, 1)),
+            KeywordToken::build_token(Keyword::Rtran, FilePosition::new(171, 1)),
+            KeywordToken::build_token(Keyword::Rtranif0, FilePosition::new(172, 1)),
+            KeywordToken::build_token(Keyword::Rtranif1, FilePosition::new(173, 1)),
+            KeywordToken::build_token(Keyword::SAlways, FilePosition::new(174, 1)),
+            KeywordToken::build_token(Keyword::SEventually, FilePosition::new(175, 1)),
+            KeywordToken::build_token(Keyword::SNexttime, FilePosition::new(176, 1)),
+            KeywordToken::build_token(Keyword::SUntil, FilePosition::new(177, 1)),
+            KeywordToken::build_token(Keyword::SUntilWith, FilePosition::new(178, 1)),
+            KeywordToken::build_token(Keyword::Scalared, FilePosition::new(179, 1)),
+            KeywordToken::build_token(Keyword::Sequence, FilePosition::new(180, 1)),
+            KeywordToken::build_token(Keyword::Shortint, FilePosition::new(181, 1)),
+            KeywordToken::build_token(Keyword::Shortreal, FilePosition::new(182, 1)),
+            KeywordToken::build_token(Keyword::Showcancelled, FilePosition::new(183, 1)),
+            KeywordToken::build_token(Keyword::Signed, FilePosition::new(184, 1)),
+            KeywordToken::build_token(Keyword::Small, FilePosition::new(185, 1)),
+            KeywordToken::build_token(Keyword::Soft, FilePosition::new(186, 1)),
+            KeywordToken::build_token(Keyword::Solve, FilePosition::new(187, 1)),
+            KeywordToken::build_token(Keyword::Specify, FilePosition::new(188, 1)),
+            KeywordToken::build_token(Keyword::Specparam, FilePosition::new(189, 1)),
+            KeywordToken::build_token(Keyword::Static, FilePosition::new(190, 1)),
+            KeywordToken::build_token(Keyword::String, FilePosition::new(191, 1)),
+            KeywordToken::build_token(Keyword::Strong, FilePosition::new(192, 1)),
+            KeywordToken::build_token(Keyword::Strong0, FilePosition::new(193, 1)),
+            KeywordToken::build_token(Keyword::Strong1, FilePosition::new(194, 1)),
+            KeywordToken::build_token(Keyword::Struct, FilePosition::new(195, 1)),
+            KeywordToken::build_token(Keyword::Super, FilePosition::new(196, 1)),
+            KeywordToken::build_token(Keyword::Supply0, FilePosition::new(197, 1)),
+            KeywordToken::build_token(Keyword::Supply1, FilePosition::new(198, 1)),
+            KeywordToken::build_token(Keyword::SyncAcceptOn, FilePosition::new(199, 1)),
+            KeywordToken::build_token(Keyword::SyncRejectOn, FilePosition::new(200, 1)),
+            KeywordToken::build_token(Keyword::Table, FilePosition::new(201, 1)),
+            KeywordToken::build_token(Keyword::Tagged, FilePosition::new(202, 1)),
+            KeywordToken::build_token(Keyword::Task, FilePosition::new(203, 1)),
+            KeywordToken::build_token(Keyword::This, FilePosition::new(204, 1)),
+            KeywordToken::build_token(Keyword::Throughout, FilePosition::new(205, 1)),
+            KeywordToken::build_token(Keyword::Time, FilePosition::new(206, 1)),
+            KeywordToken::build_token(Keyword::Timeprecision, FilePosition::new(207, 1)),
+            KeywordToken::build_token(Keyword::Timeunit, FilePosition::new(208, 1)),
+            KeywordToken::build_token(Keyword::Tran, FilePosition::new(209, 1)),
+            KeywordToken::build_token(Keyword::Tranif0, FilePosition::new(210, 1)),
+            KeywordToken::build_token(Keyword::Tranif1, FilePosition::new(211, 1)),
+            KeywordToken::build_token(Keyword::Tri, FilePosition::new(212, 1)),
+            KeywordToken::build_token(Keyword::Tri0, FilePosition::new(213, 1)),
+            KeywordToken::build_token(Keyword::Tri1, FilePosition::new(214, 1)),
+            KeywordToken::build_token(Keyword::Triand, FilePosition::new(215, 1)),
+            KeywordToken::build_token(Keyword::Trior, FilePosition::new(216, 1)),
+            KeywordToken::build_token(Keyword::Trireg, FilePosition::new(217, 1)),
+            KeywordToken::build_token(Keyword::Type, FilePosition::new(218, 1)),
+            KeywordToken::build_token(Keyword::Typedef, FilePosition::new(219, 1)),
+            KeywordToken::build_token(Keyword::Union, FilePosition::new(220, 1)),
+            KeywordToken::build_token(Keyword::Unique, FilePosition::new(221, 1)),
+            KeywordToken::build_token(Keyword::Unique0, FilePosition::new(222, 1)),
+            KeywordToken::build_token(Keyword::Unsigned, FilePosition::new(223, 1)),
+            KeywordToken::build_token(Keyword::Until, FilePosition::new(224, 1)),
+            KeywordToken::build_token(Keyword::UntilWith, FilePosition::new(225, 1)),
+            KeywordToken::build_token(Keyword::Untyped, FilePosition::new(226, 1)),
+            KeywordToken::build_token(Keyword::Use, FilePosition::new(227, 1)),
+            KeywordToken::build_token(Keyword::Uwire, FilePosition::new(228, 1)),
+            KeywordToken::build_token(Keyword::Var, FilePosition::new(229, 1)),
+            KeywordToken::build_token(Keyword::Vectored, FilePosition::new(230, 1)),
+            KeywordToken::build_token(Keyword::Virtual, FilePosition::new(231, 1)),
+            KeywordToken::build_token(Keyword::Void, FilePosition::new(232, 1)),
+            KeywordToken::build_token(Keyword::Wait, FilePosition::new(233, 1)),
+            KeywordToken::build_token(Keyword::WaitOrder, FilePosition::new(234, 1)),
+            KeywordToken::build_token(Keyword::Wand, FilePosition::new(235, 1)),
+            KeywordToken::build_token(Keyword::Weak, FilePosition::new(236, 1)),
+            KeywordToken::build_token(Keyword::Weak0, FilePosition::new(237, 1)),
+            KeywordToken::build_token(Keyword::Weak1, FilePosition::new(238, 1)),
+            KeywordToken::build_token(Keyword::While, FilePosition::new(239, 1)),
+            KeywordToken::build_token(Keyword::Wildcard, FilePosition::new(240, 1)),
+            KeywordToken::build_token(Keyword::Wire, FilePosition::new(241, 1)),
+            KeywordToken::build_token(Keyword::With, FilePosition::new(242, 1)),
+            KeywordToken::build_token(Keyword::Within, FilePosition::new(243, 1)),
+            KeywordToken::build_token(Keyword::Wor, FilePosition::new(244, 1)),
+            KeywordToken::build_token(Keyword::Xnor, FilePosition::new(245, 1)),
+            KeywordToken::build_token(Keyword::Xor, FilePosition::new(246, 1)),
+            Token::EOF(FilePosition::new(246, 4)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "accept_on
+alias
+always
+always_comb
+always_ff
+always_latch
+and
+assert
+assign
+assume
+automatic
+before
+begin
+bind
+bins
+binsof
+bit
+break
+buf
+bufif0
+bufif1
+byte
+case
+casex
+casez
+cell
+chandle
+checker
+class
+clocking
+cmos
+config
+const
+constraint
+context
+continue
+cover
+covergroup
+coverpoint
+cross
+deassign
+default
+defparam
+design
+disable
+do
+edge
+else
+end
+endcase
+endchecker
+endclass
+endclocking
+endconfig
+endfunction
+endgenerate
+endgroup
+endinterface
+endmodule
+endpackage
+endprimitive
+endprogram
+endproperty
+endspecify
+endsequence
+endtable
+endtask
+enum
+event
+eventually
+expect
+export
+extends
+extern
+final
+first_match
+for
+force
+foreach
+forever
+fork
+forkjoin
+function
+generate
+genvar
+global
+highz0
+highz1
+if
+iff
+ifnone
+ignore_bins
+illegal_bins
+implements
+implies
+import
+incdir
+include
+initial
+inout
+input
+instance
+int
+integer
+interconnect
+interface
+intersect
+join
+join_any
+join_none
+large
+let
+liblist
+library
+local
+localparam
+logic
+longint
+macromodule
+matches
+medium
+modport
+module
+nand
+negedge
+nettype
+new
+nexttime
+nmos
+nor
+noshowcancelled
+not
+notif0
+notif1
+null
+or
+output
+package
+packed
+parameter
+pmos
+posedge
+primitive
+priority
+program
+property
+protected
+pull0
+pull1
+pulldown
+pullup
+pulsestyle_ondetect
+pulsestyle_onevent
+pure
+rand
+randc
+randcase
+randsequence
+rcmos
+real
+realtime
+ref
+reg
+reject_on
+release
+repeat
+restrict
+return
+rnmos
+rpmos
+rtran
+rtranif0
+rtranif1
+s_always
+s_eventually
+s_nexttime
+s_until
+s_until_with
+scalared
+sequence
+shortint
+shortreal
+showcancelled
+signed
+small
+soft
+solve
+specify
+specparam
+static
+string
+strong
+strong0
+strong1
+struct
+super
+supply0
+supply1
+sync_accept_on
+sync_reject_on
+table
+tagged
+task
+this
+throughout
+time
+timeprecision
+timeunit
+tran
+tranif0
+tranif1
+tri
+tri0
+tri1
+triand
+trior
+trireg
+type
+typedef
+union
+unique
+unique0
+unsigned
+until
+until_with
+untyped
+use
+uwire
+var
+vectored
+virtual
+void
+wait
+wait_order
+wand
+weak
+weak0
+weak1
+while
+wildcard
+wire
+with
+within
+wor
+xnor
+xor",
         )?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
