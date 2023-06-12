@@ -13,6 +13,7 @@ pub enum Token {
     Operator(OperatorToken),
     Punctuation(PunctuationToken),
     Keyword(KeywordToken),
+    EscapedIdentifier(EscapedIdentifierToken),
     Error(ErrorToken),
     EOF(FilePosition),
 }
@@ -58,6 +59,12 @@ pub struct PunctuationToken {
 #[derive(Debug, PartialEq, Eq)]
 pub struct KeywordToken {
     keyword: Keyword,
+    position: FilePosition,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct EscapedIdentifierToken {
+    identifier: String,
     position: FilePosition,
 }
 
@@ -108,6 +115,15 @@ impl BuildToken<Punctuation> for PunctuationToken {
         Token::Punctuation(PunctuationToken {
             punctuation,
             position,
+        })
+    }
+}
+
+impl BuildToken<String> for EscapedIdentifierToken {
+    fn build_token(identifier: String, position: FilePosition) -> Token {
+        Token::EscapedIdentifier(EscapedIdentifierToken {
+            identifier,
+            position
         })
     }
 }
