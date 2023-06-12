@@ -477,17 +477,18 @@ mod tests {
     use std::io::{Error, Write};
     use std::path::PathBuf;
 
-    use crate::token::{BuildToken, ErrorToken, NumberToken, StringLiteralToken};
+    use crate::token::{
+        BuildToken, CharacterSequenceToken, ErrorToken, NumberToken, StringLiteralToken,
+    };
 
     use super::{FilePosition, Lexer, Token};
     use tempfile::{tempdir, TempDir};
 
     fn create_temporary_verilog_file(
         dir: &TempDir,
-        file_name: &'static str,
         content: &'static str,
     ) -> Result<PathBuf, Error> {
-        let file_path = dir.path().join(file_name);
+        let file_path = dir.path().join("test.sv");
         let mut file = File::create(&file_path)?;
         file.write(content.as_bytes())?;
 
@@ -498,7 +499,7 @@ mod tests {
     fn should_lex_empty_file() -> Result<(), Error> {
         let expected_tokens = vec![Token::EOF(FilePosition::new(1, 1))];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "empty.sv", "")?;
+        let file_path = create_temporary_verilog_file(&dir, "")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
@@ -513,7 +514,7 @@ mod tests {
     fn should_lex_white_space() -> Result<(), Error> {
         let expected_tokens = vec![Token::EOF(FilePosition::new(2, 4))];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "whitespace.sv", "\n\r \t")?;
+        let file_path = create_temporary_verilog_file(&dir, "\n\r \t")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
@@ -533,7 +534,6 @@ mod tests {
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
             &dir,
-            "comments.sv",
             "// A comment
 /*
 * A
@@ -545,7 +545,6 @@ mod tests {
 
         let tokens = lexer.lex();
 
-        dbg!(&tokens, &expected_tokens);
         assert_eq!(tokens.len(), expected_tokens.len());
         for i in 0..tokens.len() {
             assert_eq!(tokens[i], expected_tokens[i]);
@@ -562,12 +561,11 @@ mod tests {
             Token::EOF(FilePosition::new(1, 6)),
         ];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "numbers.sv", "42069")?;
+        let file_path = create_temporary_verilog_file(&dir, "42069")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
 
-        dbg!(&tokens, &expected_tokens);
         assert_eq!(tokens.len(), expected_tokens.len());
         for i in 0..tokens.len() {
             assert_eq!(tokens[i], expected_tokens[i]);
@@ -591,7 +589,6 @@ mod tests {
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
             &dir,
-            "string_literal.sv",
             "\"Foo\"\"Bar\\n\\t\\r\"
 \"Thelonius
 Monk\"",
@@ -600,7 +597,6 @@ Monk\"",
 
         let tokens = lexer.lex();
 
-        dbg!(&tokens, &expected_tokens);
         assert_eq!(tokens.len(), expected_tokens.len());
         for i in 0..tokens.len() {
             assert_eq!(tokens[i], expected_tokens[i]);
@@ -617,12 +613,36 @@ Monk\"",
             Token::EOF(FilePosition::new(1, 10)),
         ];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "string_literal.sv", "\"Unclosed")?;
+        let file_path = create_temporary_verilog_file(&dir, "\"Unclosed")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
 
-        dbg!(&tokens, &expected_tokens);
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_character_sequence() -> Result<(), Error> {
+        let expected_tokens = vec![
+            CharacterSequenceToken::build_token(String::from("abcXYZ"), FilePosition::new(1, 1)),
+            CharacterSequenceToken::build_token(
+                String::from("\\@#art\\()"),
+                FilePosition::new(1, 8),
+            ),
+            Token::EOF(FilePosition::new(2, 1)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "abcXYZ \\@#art\\()\n")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
         assert_eq!(tokens.len(), expected_tokens.len());
         for i in 0..tokens.len() {
             assert_eq!(tokens[i], expected_tokens[i]);
