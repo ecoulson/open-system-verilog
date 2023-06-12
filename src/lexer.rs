@@ -4,13 +4,13 @@ use crate::char_reader::CharReader;
 use crate::keywords::KEYWORD_SYMBOLS;
 use crate::operators::OPERATOR_SYMBOLS;
 use crate::punctuation::Punctuation;
-use crate::token::{BuildToken, ErrorToken, Token};
+use crate::token::{BuildToken, ErrorToken, Token, EscapedIdentifierToken};
 use crate::token::{
     CharacterSequenceToken, KeywordToken, NumberToken, OperatorToken, PunctuationToken,
     StringLiteralToken, TokenFromSequence,
 };
 
-const LEXICAL_OPERATIONS: [LexerOperator; 8] = [
+const LEXICAL_OPERATIONS: [LexerOperator; 9] = [
     LexerOperator::WhiteSpace,
     LexerOperator::Comment,
     LexerOperator::Operator,
@@ -19,6 +19,7 @@ const LEXICAL_OPERATIONS: [LexerOperator; 8] = [
     LexerOperator::Number,
     LexerOperator::StringLiteral,
     LexerOperator::CharacterSequence,
+    LexerOperator::EscapedIdentifier,
 ];
 
 enum LexerOperator {
@@ -30,6 +31,7 @@ enum LexerOperator {
     Operator,
     Keyword,
     Punctuation,
+    EscapedIdentifier,
 }
 
 #[derive(Clone, Copy)]
@@ -148,6 +150,7 @@ impl Lexer {
             LexerOperator::Operator => self.lex_operator(),
             LexerOperator::Keyword => self.lex_keyword(),
             LexerOperator::Punctuation => self.lex_punctuation(),
+            LexerOperator::EscapedIdentifier => self.lex_escaped_identifier(),
         };
 
         match token {
@@ -290,32 +293,6 @@ impl Lexer {
     }
 
     fn lex_character_sequence(&mut self) -> Result<Token, &'static str> {
-        return match self.peek()? {
-            '\\' => self.lex_escaped_identifier(),
-            _ => self.lex_simple_identifier(),
-        };
-    }
-
-    fn lex_escaped_identifier(&mut self) -> Result<Token, &'static str> {
-        let mut escaped_identifier = String::new();
-        let file_position = self.file_position();
-        escaped_identifier.push(self.read()?); // Read the \
-
-        while !self.peek()?.is_whitespace() {
-            escaped_identifier.push(self.read()?);
-        }
-
-        if escaped_identifier.len() == 1 {
-            return Err("Escaped identifier must not empty");
-        }
-
-        Ok(CharacterSequenceToken::build_token(
-            escaped_identifier,
-            file_position,
-        ))
-    }
-
-    fn lex_simple_identifier(&mut self) -> Result<Token, &'static str> {
         let mut character_sequence = String::from("");
         let file_position = self.file_position();
 
@@ -329,6 +306,31 @@ impl Lexer {
 
         Ok(CharacterSequenceToken::build_token(
             character_sequence,
+            file_position,
+        ))
+    }
+
+    fn lex_escaped_identifier(&mut self) -> Result<Token, &'static str> {
+        if self.peek()? != '\\' {
+            return Err(
+                "Escaped identifier must start with \\",
+            );
+        }
+
+        let mut identifier = String::new();
+        let file_position = self.file_position();
+        identifier.push(self.read()?); // Read the \
+
+        while self.can_read() && !self.peek()?.is_whitespace() {
+            identifier.push(self.read()?);
+        }
+
+        if identifier.len() == 1 {
+            return Err("Escaped identifier must not empty");
+        }
+
+        Ok(EscapedIdentifierToken::build_token(
+            identifier,
             file_position,
         ))
     }
@@ -491,8 +493,8 @@ mod tests {
     use crate::operators::Operator;
     use crate::punctuation::Punctuation;
     use crate::token::{
-        BuildToken, CharacterSequenceToken, ErrorToken, KeywordToken, NumberToken, OperatorToken,
-        StringLiteralToken, PunctuationToken,
+        BuildToken, CharacterSequenceToken, ErrorToken, EscapedIdentifierToken, KeywordToken,
+        NumberToken, OperatorToken, PunctuationToken, StringLiteralToken,
     };
 
     use super::{FilePosition, Lexer, Token};
@@ -645,14 +647,58 @@ Monk\"",
     fn should_lex_character_sequence() -> Result<(), Error> {
         let expected_tokens = vec![
             CharacterSequenceToken::build_token(String::from("abcXYZ"), FilePosition::new(1, 1)),
-            CharacterSequenceToken::build_token(
+            Token::EOF(FilePosition::new(1, 7)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "abcXYZ")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_escaped_identifier() -> Result<(), Error> {
+        let expected_tokens = vec![
+            EscapedIdentifierToken::build_token(
                 String::from("\\@#art\\()"),
-                FilePosition::new(1, 8),
+                FilePosition::new(1, 1),
             ),
             Token::EOF(FilePosition::new(2, 1)),
         ];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "abcXYZ \\@#art\\()\n")?;
+        let file_path = create_temporary_verilog_file(&dir, "\\@#art\\()\n")?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_escaped_identifier_at_eof() -> Result<(), Error> {
+        let expected_tokens = vec![
+            EscapedIdentifierToken::build_token(
+                String::from("\\@#art\\()"),
+                FilePosition::new(1, 1),
+            ),
+            Token::EOF(FilePosition::new(1, 10)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "\\@#art\\()")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
@@ -1295,7 +1341,9 @@ xor",
             Token::EOF(FilePosition::new(18, 2)),
         ];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "@
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "@
 #
 $
 (
@@ -1312,7 +1360,8 @@ $
 .
 ,
 '
-_")?;
+_",
+        )?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
