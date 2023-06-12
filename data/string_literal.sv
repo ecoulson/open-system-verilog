@@ -1,9 +1,0 @@
-"foo"
-"bar\""
-"bar\n"
-"A
-Long
-Long
-Long
-Boi"
-"fail!
