@@ -34,37 +34,37 @@ pub struct NumberToken {
 #[derive(Debug, PartialEq, Eq)]
 pub struct StringLiteralToken {
     string_literal: String,
-    position: FilePosition
+    position: FilePosition,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CharacterSequenceToken {
     character_sequence: String,
-    position: FilePosition
+    position: FilePosition,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct OperatorToken {
     operator: Operator,
-    position: FilePosition
+    position: FilePosition,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct PunctuationToken {
     punctuation: Punctuation,
-    position: FilePosition
+    position: FilePosition,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct KeywordToken {
     keyword: Keyword,
-    position: FilePosition
+    position: FilePosition,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ErrorToken {
     message: &'static str,
-    position: FilePosition
+    position: FilePosition,
 }
 
 impl BuildToken<String> for NumberToken {
@@ -75,13 +75,19 @@ impl BuildToken<String> for NumberToken {
 
 impl BuildToken<String> for StringLiteralToken {
     fn build_token(string_literal: String, position: FilePosition) -> Token {
-        Token::StringLiteral(StringLiteralToken { string_literal, position })
+        Token::StringLiteral(StringLiteralToken {
+            string_literal,
+            position,
+        })
     }
 }
 
 impl BuildToken<String> for CharacterSequenceToken {
     fn build_token(character_sequence: String, position: FilePosition) -> Token {
-        Token::CharacterSequence(CharacterSequenceToken { character_sequence, position })
+        Token::CharacterSequence(CharacterSequenceToken {
+            character_sequence,
+            position,
+        })
     }
 }
 
@@ -99,7 +105,10 @@ impl BuildToken<Keyword> for KeywordToken {
 
 impl BuildToken<Punctuation> for PunctuationToken {
     fn build_token(punctuation: Punctuation, position: FilePosition) -> Token {
-        Token::Punctuation(PunctuationToken { punctuation, position })
+        Token::Punctuation(PunctuationToken {
+            punctuation,
+            position,
+        })
     }
 }
 
@@ -125,57 +134,120 @@ impl TokenFromSequence for OperatorToken {
             "^~" => Ok(OperatorToken::build_token(Operator::Xnor, position)),
             "++" => Ok(OperatorToken::build_token(Operator::Increment, position)),
             "--" => Ok(OperatorToken::build_token(Operator::Decrement, position)),
-            "**" => Ok(OperatorToken::build_token(Operator::Exponentiation, position)),
-            "*" => Ok(OperatorToken::build_token(Operator::Multiplication, position)),
+            "**" => Ok(OperatorToken::build_token(
+                Operator::Exponentiation,
+                position,
+            )),
+            "*" => Ok(OperatorToken::build_token(
+                Operator::Multiplication,
+                position,
+            )),
             "/" => Ok(OperatorToken::build_token(Operator::Division, position)),
             "%" => Ok(OperatorToken::build_token(Operator::Modulo, position)),
-            ">>" => Ok(OperatorToken::build_token(Operator::ArithmeticRightShift, position)),
-            "<<" => Ok(OperatorToken::build_token(Operator::ArithmeticLeftShift, position)),
-            ">>>" => Ok(OperatorToken::build_token(Operator::LogicalRightShift, position)),
-            "<<<" => Ok(OperatorToken::build_token(Operator::LogicalLeftShift, position)),
+            ">>" => Ok(OperatorToken::build_token(
+                Operator::LogicalRightShift,
+                position,
+            )),
+            "<<" => Ok(OperatorToken::build_token(
+                Operator::LogicalLeftShift,
+                position,
+            )),
+            ">>>" => Ok(OperatorToken::build_token(
+                Operator::ArithmeticRightShift,
+                position,
+            )),
+            "<<<" => Ok(OperatorToken::build_token(
+                Operator::ArithmeticLeftShift,
+                position,
+            )),
             "<" => Ok(OperatorToken::build_token(Operator::LessThan, position)),
-            "<=" => Ok(OperatorToken::build_token(Operator::LessThanOrEqualTo, position)),
+            "<=" => Ok(OperatorToken::build_token(
+                Operator::LessThanOrEqualTo,
+                position,
+            )),
             ">" => Ok(OperatorToken::build_token(Operator::GreaterThan, position)),
-            ">=" => Ok(OperatorToken::build_token(Operator::GreaterThanOrEqualTo, position)),
+            ">=" => Ok(OperatorToken::build_token(
+                Operator::GreaterThanOrEqualTo,
+                position,
+            )),
             "inside" => Ok(OperatorToken::build_token(Operator::Inside, position)),
             "dist" => Ok(OperatorToken::build_token(Operator::Distribution, position)),
-            "==" => Ok(OperatorToken::build_token(Operator::LogicalEquality, position)),
-            "!=" => Ok(OperatorToken::build_token(Operator::LogicalInequality, position)),
+            "==" => Ok(OperatorToken::build_token(
+                Operator::LogicalEquality,
+                position,
+            )),
+            "!=" => Ok(OperatorToken::build_token(
+                Operator::LogicalInequality,
+                position,
+            )),
             "===" => Ok(OperatorToken::build_token(Operator::CaseEquality, position)),
-            "!==" => Ok(OperatorToken::build_token(Operator::CaseInequality, position)),
-            "==?" => Ok(OperatorToken::build_token(Operator::WildcardEquality, position)),
-            "!=?" => Ok(OperatorToken::build_token(Operator::WildcardInequality, position)),
+            "!==" => Ok(OperatorToken::build_token(
+                Operator::CaseInequality,
+                position,
+            )),
+            "==?" => Ok(OperatorToken::build_token(
+                Operator::WildcardEquality,
+                position,
+            )),
+            "!=?" => Ok(OperatorToken::build_token(
+                Operator::WildcardInequality,
+                position,
+            )),
             "&&" => Ok(OperatorToken::build_token(Operator::LogicalAnd, position)),
             "||" => Ok(OperatorToken::build_token(Operator::LogicalOr, position)),
             "->" => Ok(OperatorToken::build_token(Operator::Implication, position)),
             "<->" => Ok(OperatorToken::build_token(Operator::Equivalence, position)),
-            "=" => Ok(OperatorToken::build_token(Operator::BinaryAssignment, position)),
-            "+=" => Ok(OperatorToken::build_token(Operator::AdditionAssignment, position)),
-            "-=" => Ok(OperatorToken::build_token(Operator::SubtractionAssignment, position)),
+            "=" => Ok(OperatorToken::build_token(
+                Operator::BinaryAssignment,
+                position,
+            )),
+            "+=" => Ok(OperatorToken::build_token(
+                Operator::AdditionAssignment,
+                position,
+            )),
+            "-=" => Ok(OperatorToken::build_token(
+                Operator::SubtractionAssignment,
+                position,
+            )),
             "*=" => Ok(OperatorToken::build_token(
                 Operator::MultiplicationAssignment,
-                position
+                position,
             )),
-            "/=" => Ok(OperatorToken::build_token(Operator::DivisionAssignment, position)),
-            "%=" => Ok(OperatorToken::build_token(Operator::ModuloAssignment, position)),
-            "&=" => Ok(OperatorToken::build_token(Operator::BitwiseAndAssignment, position)),
-            "^=" => Ok(OperatorToken::build_token(Operator::BitwiseXorAssignment, position)),
-            "|=" => Ok(OperatorToken::build_token(Operator::BitwiseOrAssignment, position)),
+            "/=" => Ok(OperatorToken::build_token(
+                Operator::DivisionAssignment,
+                position,
+            )),
+            "%=" => Ok(OperatorToken::build_token(
+                Operator::ModuloAssignment,
+                position,
+            )),
+            "&=" => Ok(OperatorToken::build_token(
+                Operator::BitwiseAndAssignment,
+                position,
+            )),
+            "^=" => Ok(OperatorToken::build_token(
+                Operator::BitwiseXorAssignment,
+                position,
+            )),
+            "|=" => Ok(OperatorToken::build_token(
+                Operator::BitwiseOrAssignment,
+                position,
+            )),
             "<<=" => Ok(OperatorToken::build_token(
-                Operator::ArithmeticLeftShiftAssignment,
-                position
+                Operator::LogicalLeftShiftAssignment,
+                position,
             )),
             ">>=" => Ok(OperatorToken::build_token(
-                Operator::ArithmeticRightShiftAssignment,
-                position
+                Operator::LogicalRightShiftAssignment,
+                position,
             )),
             "<<<=" => Ok(OperatorToken::build_token(
-                Operator::LogicalLeftShiftAssignment,
-                position
+                Operator::ArithmeticLeftShiftAssignment,
+                position,
             )),
             ">>>=" => Ok(OperatorToken::build_token(
-                Operator::LogicalRightShiftAssignment,
-                position
+                Operator::ArithmeticRightShiftAssignment,
+                position,
             )),
             _ => Err("Unrecognized operator"),
         }
@@ -315,7 +387,10 @@ impl TokenFromSequence for KeywordToken {
             "nexttime" => Ok(KeywordToken::build_token(Keyword::Nexttime, position)),
             "nmos" => Ok(KeywordToken::build_token(Keyword::Nmos, position)),
             "nor" => Ok(KeywordToken::build_token(Keyword::Nor, position)),
-            "noshowcancelled" => Ok(KeywordToken::build_token(Keyword::Noshowcancelled, position)),
+            "noshowcancelled" => Ok(KeywordToken::build_token(
+                Keyword::Noshowcancelled,
+                position,
+            )),
             "not" => Ok(KeywordToken::build_token(Keyword::Not, position)),
             "notif0" => Ok(KeywordToken::build_token(Keyword::Notif0, position)),
             "notif1" => Ok(KeywordToken::build_token(Keyword::Notif1, position)),
@@ -336,8 +411,14 @@ impl TokenFromSequence for KeywordToken {
             "pull1" => Ok(KeywordToken::build_token(Keyword::Pull1, position)),
             "pulldown" => Ok(KeywordToken::build_token(Keyword::Pulldown, position)),
             "pullup" => Ok(KeywordToken::build_token(Keyword::Pullup, position)),
-            "pulsestyle_ondetect" => Ok(KeywordToken::build_token(Keyword::PulsestyleOndetect, position)),
-            "pulsestyle_onevent" => Ok(KeywordToken::build_token(Keyword::PulsestyleOnevent, position)),
+            "pulsestyle_ondetect" => Ok(KeywordToken::build_token(
+                Keyword::PulsestyleOndetect,
+                position,
+            )),
+            "pulsestyle_onevent" => Ok(KeywordToken::build_token(
+                Keyword::PulsestyleOnevent,
+                position,
+            )),
             "pure" => Ok(KeywordToken::build_token(Keyword::Pure, position)),
             "rand" => Ok(KeywordToken::build_token(Keyword::Rand, position)),
             "randc" => Ok(KeywordToken::build_token(Keyword::Randc, position)),
@@ -431,7 +512,7 @@ impl TokenFromSequence for KeywordToken {
             "wor" => Ok(KeywordToken::build_token(Keyword::Wor, position)),
             "xnor" => Ok(KeywordToken::build_token(Keyword::Xnor, position)),
             "xor" => Ok(KeywordToken::build_token(Keyword::Xor, position)),
-            _ => Err("Unrecognized keyword")
+            _ => Err("Unrecognized keyword"),
         }
     }
 }
