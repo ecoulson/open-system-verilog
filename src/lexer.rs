@@ -91,7 +91,7 @@ impl Lexer {
             Some('\n') => {
                 self.move_to_new_line();
                 Ok('\n')
-            },
+            }
             Some(ch) => {
                 self.column += 1;
                 Ok(ch)
@@ -477,7 +477,7 @@ mod tests {
     use std::io::{Error, Write};
     use std::path::PathBuf;
 
-    use crate::token::{NumberToken, BuildToken, StringLiteralToken};
+    use crate::token::{BuildToken, ErrorToken, NumberToken, StringLiteralToken};
 
     use super::{FilePosition, Lexer, Token};
     use tempfile::{tempdir, TempDir};
@@ -582,13 +582,42 @@ mod tests {
         let expected_tokens = vec![
             StringLiteralToken::build_token(String::from("Foo"), FilePosition::new(1, 1)),
             StringLiteralToken::build_token(String::from("Bar\n\t\r"), FilePosition::new(1, 6)),
-            StringLiteralToken::build_token(String::from("Thelonius\nMonk"), FilePosition::new(2, 1)),
+            StringLiteralToken::build_token(
+                String::from("Thelonius\nMonk"),
+                FilePosition::new(2, 1),
+            ),
             Token::EOF(FilePosition::new(3, 6)),
         ];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "string_literal.sv", "\"Foo\"\"Bar\\n\\t\\r\"
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "string_literal.sv",
+            "\"Foo\"\"Bar\\n\\t\\r\"
 \"Thelonius
-Monk\"")?;
+Monk\"",
+        )?;
+        let mut lexer = Lexer::open(file_path.to_str().unwrap());
+
+        let tokens = lexer.lex();
+
+        dbg!(&tokens, &expected_tokens);
+        assert_eq!(tokens.len(), expected_tokens.len());
+        for i in 0..tokens.len() {
+            assert_eq!(tokens[i], expected_tokens[i]);
+        }
+        dir.close()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_lex_unclosed_string_literal() -> Result<(), Error> {
+        let expected_tokens = vec![
+            ErrorToken::build_token("String literal is never closed", FilePosition::new(1, 1)),
+            Token::EOF(FilePosition::new(1, 10)),
+        ];
+        let dir = tempdir()?;
+        let file_path = create_temporary_verilog_file(&dir, "string_literal.sv", "\"Unclosed")?;
         let mut lexer = Lexer::open(file_path.to_str().unwrap());
 
         let tokens = lexer.lex();
