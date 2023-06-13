@@ -1,6 +1,6 @@
 use crate::{
     syntax_node::{IdentifierNode, SyntaxNode},
-    token:: Token,
+    token::Token,
     token_stream::TokenStream,
 };
 
@@ -27,7 +27,7 @@ impl Parser {
     }
 
     fn parse_simple_identifier(&mut self) -> Option<SyntaxNode> {
-        if let Token::CharacterSequence(token) = self.next_token().unwrap() {
+        if let Some(Token::CharacterSequence(token)) = self.next_token() {
             let (identifier, position) = token.consume();
             return Some(IdentifierNode::new(identifier, position));
         }
