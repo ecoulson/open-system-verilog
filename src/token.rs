@@ -44,6 +44,16 @@ pub struct CharacterSequenceToken {
     position: FilePosition,
 }
 
+impl CharacterSequenceToken {
+    pub fn character_sequence(&self) -> &String {
+        return &self.character_sequence;
+    }
+
+    pub fn position(&self) -> &FilePosition {
+        return &self.position;
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct OperatorToken {
     operator: Operator,
