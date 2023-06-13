@@ -1,18 +1,18 @@
 use crate::lexer::FilePosition;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum SyntaxNode<'a> {
-    Identifier(IdentifierNode<'a>),
+pub enum SyntaxNode {
+    Identifier(IdentifierNode),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct IdentifierNode<'a> {
-    identifier: &'a String,
-    position: &'a FilePosition,
+pub struct IdentifierNode {
+    identifier: String,
+    position: FilePosition,
 }
 
-impl<'a> IdentifierNode<'a> {
-    pub fn new<'b>(identifier: &'b String, position: &'b FilePosition) -> SyntaxNode<'b> {
+impl IdentifierNode {
+    pub fn new(identifier: String, position: FilePosition) -> SyntaxNode {
         SyntaxNode::Identifier(IdentifierNode {
             identifier,
             position,

@@ -1,31 +1,38 @@
 use crate::{
     syntax_node::{IdentifierNode, SyntaxNode},
-    token::Token,
+    token:: Token,
     token_stream::TokenStream,
 };
 
-pub struct Parser<'a> {
-    token_stream: Box<dyn Iterator<Item = &'a Token> + 'a>,
+pub struct Parser {
+    token_stream: TokenStream,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new<'b>(token_stream: &'b TokenStream) -> Parser<'b> {
-        Parser {
-            token_stream: Box::new(token_stream.iter()),
-        }
+impl Parser {
+    pub fn new(token_stream: TokenStream) -> Parser {
+        Parser { token_stream }
     }
 
     pub fn parse(&mut self) -> Option<SyntaxNode> {
-        let token = self.token_stream.next().unwrap();
-        self.token_stream.next().unwrap(); // Temporary unwarp for eof
+        let simple_identifier = self.parse_simple_identifier();
 
-        match token {
-            Token::CharacterSequence(token) => Some(IdentifierNode::new(
-                token.character_sequence(),
-                token.position(),
-            )),
+        match self.next_token() {
+            Some(Token::EOF(_)) => simple_identifier,
             _ => None,
         }
+    }
+
+    fn next_token(&mut self) -> Option<Token> {
+        self.token_stream.next()
+    }
+
+    fn parse_simple_identifier(&mut self) -> Option<SyntaxNode> {
+        if let Token::CharacterSequence(token) = self.next_token().unwrap() {
+            let (identifier, position) = token.consume();
+            return Some(IdentifierNode::new(identifier, position));
+        }
+
+        None
     }
 }
 
@@ -44,12 +51,12 @@ mod tests {
     fn should_parse_simple_identifier() {
         let identifier = String::from("abc");
         let position = FilePosition::new(1, 1);
-        let expected_ast = IdentifierNode::new(&identifier, &position);
+        let expected_ast = IdentifierNode::new(identifier, position);
         let tokens = TokenStream::new(vec![
             CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
             Token::EOF(FilePosition::new(1, 4)),
         ]);
-        let mut parser = Parser::new(&tokens);
+        let mut parser = Parser::new(tokens);
 
         let ast = parser.parse().unwrap();
 

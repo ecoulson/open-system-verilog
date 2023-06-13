@@ -98,8 +98,8 @@ fn should_lex_svaunit_seq() {
 
     let tokens = lexer.lex();
 
-    for (i, token) in tokens.iter().enumerate() {
-        assert_eq!(token, &expected_tokens[i]);
+    for (i, token) in tokens.enumerate() {
+        assert_eq!(token, expected_tokens[i]);
     }
 }
 
@@ -1643,7 +1643,7 @@ fn should_lex_data_table() {
 
     let tokens = lexer.lex();
 
-    for (i, token) in tokens.iter().enumerate() {
-        assert_eq!(token, &expected_tokens[i]);
+    for (i, token) in tokens.enumerate() {
+        assert_eq!(token, expected_tokens[i]);
     }
 }

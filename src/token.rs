@@ -45,12 +45,8 @@ pub struct CharacterSequenceToken {
 }
 
 impl CharacterSequenceToken {
-    pub fn character_sequence(&self) -> &String {
-        return &self.character_sequence;
-    }
-
-    pub fn position(&self) -> &FilePosition {
-        return &self.position;
+    pub fn consume(self) -> (String, FilePosition) {
+        return (self.character_sequence, self.position);
     }
 }
 

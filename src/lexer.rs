@@ -525,11 +525,11 @@ mod tests {
     }
 
     fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<Token>) {
-        let token_iterator = tokens.iter().enumerate();
+        let token_iterator = tokens.enumerate();
         let mut length = 0;
 
         for (i, token) in token_iterator {
-            assert_eq!(token, &expected_tokens[i]);
+            assert_eq!(token, expected_tokens[i]);
             length += 1;
         }
 
