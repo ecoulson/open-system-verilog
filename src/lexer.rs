@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::process;
 
 use crate::char_reader::CharReader;
 use crate::keywords::KEYWORD_SYMBOLS;
@@ -35,15 +36,15 @@ enum LexerOperator {
     EscapedIdentifier,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Mark {
-    position: usize,
-    row: usize,
-    column: usize,
+    position: u64,
+    row: u64,
+    column: u64,
 }
 
 impl Mark {
-    fn build(position: usize, row: usize, column: usize) -> Mark {
+    fn build(position: u64, row: u64, column: u64) -> Mark {
         Mark {
             position,
             row,
@@ -54,27 +55,27 @@ impl Mark {
 
 pub struct Lexer {
     char_reader: CharReader,
-    column: usize,
-    row: usize,
+    column: u64,
+    row: u64,
     mark: Option<Mark>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FilePosition {
-    column: usize,
-    row: usize,
+    column: u64,
+    row: u64,
 }
 
 impl FilePosition {
-    pub fn new(row: usize, column: usize) -> FilePosition {
+    pub fn new(row: u64, column: u64) -> FilePosition {
         FilePosition { column, row }
     }
 
-    pub fn column(&self) -> usize {
+    pub fn column(&self) -> u64 {
         self.column
     }
 
-    pub fn row(&self) -> usize {
+    pub fn row(&self) -> u64 {
         self.row
     }
 }
@@ -110,7 +111,7 @@ impl Lexer {
         }
     }
 
-    fn position(&self) -> usize {
+    fn position(&self) -> u64 {
         self.char_reader.get_position()
     }
 
@@ -305,7 +306,7 @@ impl Lexer {
         let mut character_sequence = String::from("");
         let file_position = self.file_position();
 
-        while self.can_read() && self.peek()?.is_alphabetic() {
+        while self.can_read() && (self.peek()?.is_alphabetic() || self.peek()? == '_') {
             character_sequence.push(self.read()?);
         }
 
@@ -369,7 +370,11 @@ impl Lexer {
             return None;
         }
 
-        let best_length = best_sequence.unwrap().bytes().len();
+        let best_length: u64 = best_sequence.unwrap().bytes().len().try_into().unwrap_or_else(|_| {
+            eprintln!("Sequences should not be longer than 2^64 due to the usage of u64's for tracking seek_position, row, and column. The design could be changed in the future to account for larger files");
+            process::exit(1)
+        });
+
         self.go_to(Mark::build(
             self.position() + best_length,
             self.row,
