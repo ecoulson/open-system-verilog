@@ -26,10 +26,24 @@ pub trait BuildToken<T> {
     fn build_token(value: T, position: FilePosition) -> Token;
 }
 
+pub trait Consume {
+    type Item;
+
+    fn consume(self) -> (Self::Item, FilePosition);
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct NumberToken {
     number: String,
     position: FilePosition,
+}
+
+impl Consume for NumberToken {
+    type Item = String;
+
+    fn consume(self) -> (Self::Item, FilePosition) {
+        return (self.number, self.position);
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -44,6 +58,14 @@ pub struct CharacterSequenceToken {
     position: FilePosition,
 }
 
+impl Consume for CharacterSequenceToken {
+    type Item = String;
+
+    fn consume(self) -> (Self::Item, FilePosition) {
+        return (self.character_sequence, self.position);
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct OperatorToken {
     operator: Operator,
@@ -54,6 +76,20 @@ pub struct OperatorToken {
 pub struct PunctuationToken {
     punctuation: Punctuation,
     position: FilePosition,
+}
+
+impl PunctuationToken {
+    pub fn punctuation(&self) -> &Punctuation {
+        &self.punctuation
+    }
+}
+
+impl Consume for PunctuationToken {
+    type Item = Punctuation;
+
+    fn consume(self) -> (Self::Item, FilePosition) {
+        return (self.punctuation, self.position)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -123,7 +159,7 @@ impl BuildToken<String> for EscapedIdentifierToken {
     fn build_token(identifier: String, position: FilePosition) -> Token {
         Token::EscapedIdentifier(EscapedIdentifierToken {
             identifier,
-            position
+            position,
         })
     }
 }
