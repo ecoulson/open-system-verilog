@@ -8,6 +8,30 @@ use crate::{
     token_stream::TokenStream,
 };
 
+#[derive(Debug)]
+struct ParseError {
+    message: &'static str,
+    file_position: FilePosition,
+}
+
+impl ParseError {
+    fn new(message: &'static str, file_position: FilePosition) -> ParseError {
+        ParseError {
+            message,
+            file_position,
+        }
+    }
+
+    fn format_error(&self) -> String {
+        format!(
+            "error: {}\n--> {}:{}",
+            self.message,
+            self.file_position.row(),
+            self.file_position.column()
+        )
+    }
+}
+
 pub struct Parser {
     token_stream: Peekable<TokenStream>,
     errors: Vec<String>,
@@ -25,7 +49,7 @@ impl Parser {
         let mut root: Option<SyntaxNode> = None;
 
         match self.parse_simple_identifier() {
-            Err(message) => self.errors.push(message),
+            Err(error) => self.errors.push(error.format_error()),
             Ok(token) => root = Some(token),
         }
 
@@ -70,18 +94,19 @@ impl Parser {
         }
     }
 
-    fn parse_simple_identifier(&mut self) -> Result<SyntaxNode, String> {
+    fn parse_simple_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         let mut identifier = Vec::new();
-        let position: Option<FilePosition>;
+        let position: FilePosition;
 
         if self.can_read_simple_identifier_beginning_token() {
             let (character_sequence, file_position) = self.consume_next_token_as_string().unwrap();
 
-            position = Some(file_position);
+            position = file_position;
             identifier.push(character_sequence);
         } else {
-            return Err(String::from(
+            return Err(ParseError::new(
                 "Identifier must start with _ or character sequence",
+                FilePosition::new(1, 1),
             ));
         }
 
@@ -91,7 +116,16 @@ impl Parser {
             }
         }
 
-        Ok(IdentifierNode::new(identifier.join(""), position.unwrap()))
+        let identifier = identifier.join("");
+
+        if identifier == "_" {
+            return Err(ParseError::new(
+                "Identifier must not consist of solely an '_'",
+                position,
+            ));
+        }
+
+        Ok(IdentifierNode::new(identifier, position))
     }
 
     fn can_read_simple_identifier_beginning_token(&mut self) -> bool {
@@ -156,12 +190,27 @@ mod tests {
 
     #[test]
     fn should_parse_identifier() {
-        let expected_node = IdentifierNode::new(String::from("abc123$_"), FilePosition::new(1, 1));
+        let expected_node = IdentifierNode::new(
+            String::from("abc123$_"),
+            FilePosition::new(1, 1),
+        );
         let tokens = vec![
-            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
-            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
-            PunctuationToken::build_token(Punctuation::Dollar, FilePosition::new(1, 1)),
-            PunctuationToken::build_token(Punctuation::Underscore, FilePosition::new(1, 1)),
+            CharacterSequenceToken::build_token(
+                String::from("abc"),
+                FilePosition::new(1, 1),
+            ),
+            NumberToken::build_token(
+                String::from("123"),
+                FilePosition::new(1, 1),
+            ),
+            PunctuationToken::build_token(
+                Punctuation::Dollar,
+                FilePosition::new(1, 1),
+            ),
+            PunctuationToken::build_token(
+                Punctuation::Underscore,
+                FilePosition::new(1, 1),
+            ),
         ];
         let mut parser = Parser::new(TokenStream::new(tokens));
 
