@@ -77,7 +77,7 @@ impl Parser {
 
     fn file_position(&mut self) -> Result<FilePosition, ParseError> {
         if let Some(token) = self.peek_token() {
-            return Ok(token.file_position());
+            return Ok(token.position());
         }
 
         Err(ParseError::new("", FilePosition::new(0, 0)))
