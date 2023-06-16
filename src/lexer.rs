@@ -2,10 +2,10 @@ use std::cmp::Ordering;
 use std::process;
 
 use crate::char_reader::CharReader;
-use crate::keywords::{KEYWORD_SYMBOLS, Keyword};
-use crate::operators::{OPERATOR_SYMBOLS, Operator};
+use crate::keywords::{Keyword, KEYWORD_SYMBOLS};
+use crate::operators::{Operator, OPERATOR_SYMBOLS};
 use crate::punctuation::Punctuation;
-use crate::token::{TokenStruct, Token, TokenFromSequence};
+use crate::token::{Token, TokenFromSequence, TokenStruct};
 use crate::token_stream::TokenStream;
 
 const LEXICAL_OPERATIONS: [LexerOperator; 9] = [
@@ -13,8 +13,8 @@ const LEXICAL_OPERATIONS: [LexerOperator; 9] = [
     LexerOperator::Comment,
     LexerOperator::Operator,
     LexerOperator::Keyword,
-    LexerOperator::Punctuation,
     LexerOperator::Number,
+    LexerOperator::Punctuation,
     LexerOperator::StringLiteral,
     LexerOperator::CharacterSequence,
     LexerOperator::EscapedIdentifier,
@@ -94,17 +94,17 @@ impl Lexer {
     }
 
     fn read(&mut self) -> Result<char, &'static str> {
-        match self.char_reader.read_char() {
-            None => Err("End of file"),
-            Some('\n') => {
-                self.move_to_new_line();
-                Ok('\n')
-            }
-            Some(ch) => {
-                self.column += 1;
+        self.char_reader
+            .read_char()
+            .map_or(Err("End of file"), |ch| {
+                if ch == '\n' {
+                    self.move_to_new_line();
+                } else {
+                    self.column += 1;
+                }
+
                 Ok(ch)
-            }
-        }
+            })
     }
 
     fn position(&self) -> u64 {
@@ -118,15 +118,17 @@ impl Lexer {
     }
 
     fn mark(&mut self) {
-        self.mark = Some(Mark::build(self.position(), self.row, self.column));
+        self.mark = Some(self.get_current_mark())
+    }
+
+    fn get_current_mark(&self) -> Mark {
+        Mark::build(self.position(), self.row, self.column)
     }
 
     fn go_to_mark(&mut self) {
-        if self.mark.is_none() {
-            return;
+        if let Some(mark) = self.mark {
+            self.go_to(mark);
         }
-
-        self.go_to(self.mark.unwrap());
     }
 
     pub fn lex(&mut self) -> TokenStream {
@@ -163,15 +165,14 @@ impl Lexer {
     }
 
     fn lex_token(&mut self) -> TokenStruct {
-        let file_position = self.file_position();
         let mut best_token =
-            TokenStruct::build_error_token("Failed to read any characters", file_position);
-        let mut best_mark = Mark::build(0, 1, 1);
+            TokenStruct::build_error_token("Failed to read any characters", self.file_position());
+        let mut best_mark = self.get_current_mark();
 
         for operator in LEXICAL_OPERATIONS {
             self.mark();
             let token = self.execute_lexical_operation(operator);
-            let mark = Mark::build(self.position(), self.row, self.column);
+            let mark = self.get_current_mark();
             self.go_to_mark();
 
             if matches!(best_token.kind(), Token::Error(_))
@@ -273,11 +274,10 @@ impl Lexer {
         self.read()?;
 
         while self.can_read() && self.peek()? != '"' {
-            let ch = self.read()?;
-            match ch {
-                '\\' => string_literal.push(self.read_escaped_character()?),
-                _ => string_literal.push(ch),
-            }
+            string_literal.push(match self.read()? {
+                '\\' => self.read_escaped_character()?,
+                ch => ch,
+            });
         }
 
         if !self.can_read() {
@@ -327,7 +327,7 @@ impl Lexer {
 
         let mut identifier = String::new();
         let file_position = self.file_position();
-        identifier.push(self.read()?); // Read the \
+        identifier.push(self.read()?);
 
         while self.can_read() && !self.peek()?.is_whitespace() {
             identifier.push(self.read()?);
@@ -346,31 +346,26 @@ impl Lexer {
     fn lex_operator(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
-        match self.get_best_sequence(&OPERATOR_SYMBOLS) {
-            Some(sequence) => Operator::from_sequence(sequence, file_position),
-            _ => Err("Unrecognized operator"),
-        }
+        self.get_best_sequence(&OPERATOR_SYMBOLS)
+            .map_or(Err("Unrecognized operator"), |sequence| {
+                Operator::from_sequence(sequence, file_position)
+            })
     }
 
     fn get_best_sequence(&mut self, sequences: &[&'static str]) -> Option<&'static str> {
-        let best_sequence: Option<&'static str> = sequences
+        let best_sequence: &'static str = sequences
             .iter()
-            .map(|op| {
-                self.mark();
-                let sequence = self.read_sequence(op);
-                self.go_to_mark();
-
-                sequence
-            })
+            .map(|op| self.read_sequence(op))
             .filter(|seq| seq.is_ok())
             .map(|seq| seq.unwrap())
-            .reduce(Lexer::compare_sequences);
+            .reduce(Lexer::compare_sequences)
+            .unwrap_or("");
 
-        if best_sequence.is_none() {
+        if best_sequence.len() == 0 {
             return None;
         }
 
-        let best_length: u64 = best_sequence.unwrap().bytes().len().try_into().unwrap_or_else(|_| {
+        let best_length: u64 = best_sequence.bytes().len().try_into().unwrap_or_else(|_| {
             eprintln!("Sequences should not be longer than 2^64 due to the usage of u64's for tracking seek_position, row, and column. The design could be changed in the future to account for larger files");
             process::exit(1)
         });
@@ -381,16 +376,19 @@ impl Lexer {
             self.column + best_length,
         ));
 
-        best_sequence
+        Some(best_sequence)
     }
 
     fn read_sequence(&mut self, sequence: &'static str) -> Result<&'static str, &'static str> {
+        self.mark();
         for sequence_char in sequence.chars() {
             if self.read()? != sequence_char {
+                self.go_to_mark();
                 return Err("Char did not match");
             }
         }
 
+        self.go_to_mark();
         Ok(sequence)
     }
 
@@ -404,17 +402,15 @@ impl Lexer {
     fn lex_keyword(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
-        match self.get_best_sequence(&KEYWORD_SYMBOLS) {
-            Some(sequence) => Keyword::from_sequence(sequence, file_position),
-            None => Err("Unrecognized keyword"),
-        }
+        self.get_best_sequence(&KEYWORD_SYMBOLS)
+            .map_or(Err("Unrecognized operator"), |sequence| {
+                Keyword::from_sequence(sequence, file_position)
+            })
     }
 
     fn lex_punctuation(&mut self) -> Result<TokenStruct, &'static str> {
-        let result = Punctuation::from_char(self.peek()?, self.file_position());
-        self.read()?;
-
-        result
+        let position = self.file_position();
+        Punctuation::from_char(self.read()?, position)
     }
 }
 
