@@ -5,8 +5,8 @@ use crate::punctuation::Punctuation;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Token {
-    WhiteSpace,
-    Comment,
+    WhiteSpace(FilePosition),
+    Comment(FilePosition),
     Number(NumberToken),
     StringLiteral(StringLiteralToken),
     CharacterSequence(CharacterSequenceToken),
@@ -16,6 +16,47 @@ pub enum Token {
     EscapedIdentifier(EscapedIdentifierToken),
     Error(ErrorToken),
     EOF(FilePosition),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TokenStruct {
+    kind: Token,
+}
+
+impl TokenStruct {
+    pub fn new(kind: Token) -> TokenStruct {
+        TokenStruct { kind }
+    }
+
+    pub fn position(&self) -> FilePosition {
+        self.kind.file_position().clone()
+    }
+
+    pub fn kind(&self) -> &Token {
+        &self.kind
+    }
+
+    pub fn consume(self) -> Token {
+        self.kind
+    }
+}
+
+impl Token {
+    pub fn file_position(&self) -> FilePosition {
+        match self {
+            Token::Comment(position) | Token::WhiteSpace(position) | Token::EOF(position) => {
+                position.clone()
+            }
+            Token::Number(token) => token.position.clone(),
+            Token::StringLiteral(token) => token.position.clone(),
+            Token::CharacterSequence(token) => token.position.clone(),
+            Token::Operator(token) => token.position.clone(),
+            Token::Punctuation(token) => token.position.clone(),
+            Token::Keyword(token) => token.position.clone(),
+            Token::EscapedIdentifier(token) => token.position.clone(),
+            Token::Error(token) => token.position.clone(),
+        }
+    }
 }
 
 pub trait TokenFromSequence {
@@ -29,7 +70,7 @@ pub trait BuildToken<T> {
 pub trait Consume {
     type Item;
 
-    fn consume(self) -> (Self::Item, FilePosition);
+    fn consume(self) -> Self::Item;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -41,8 +82,8 @@ pub struct NumberToken {
 impl Consume for NumberToken {
     type Item = String;
 
-    fn consume(self) -> (Self::Item, FilePosition) {
-        return (self.number, self.position);
+    fn consume(self) -> Self::Item {
+        return self.number;
     }
 }
 
@@ -61,8 +102,8 @@ pub struct CharacterSequenceToken {
 impl Consume for CharacterSequenceToken {
     type Item = String;
 
-    fn consume(self) -> (Self::Item, FilePosition) {
-        return (self.character_sequence, self.position);
+    fn consume(self) -> Self::Item {
+        return self.character_sequence;
     }
 }
 
@@ -87,8 +128,8 @@ impl PunctuationToken {
 impl Consume for PunctuationToken {
     type Item = Punctuation;
 
-    fn consume(self) -> (Self::Item, FilePosition) {
-        return (self.punctuation, self.position)
+    fn consume(self) -> Self::Item {
+        return self.punctuation;
     }
 }
 

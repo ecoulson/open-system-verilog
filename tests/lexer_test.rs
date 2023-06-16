@@ -6,6 +6,19 @@ use open_system_verilog::token::{
     BuildToken, CharacterSequenceToken, KeywordToken, OperatorToken, PunctuationToken,
     StringLiteralToken, NumberToken, Token,
 };
+use open_system_verilog::token_stream::TokenStream;
+
+fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<Token>) {
+    let token_iterator = tokens.enumerate();
+    let mut length = 0;
+
+    for (i, token) in token_iterator {
+        assert_eq!(token.kind(), &expected_tokens[i]);
+        length += 1;
+    }
+
+    assert_eq!(length, expected_tokens.len());
+}
 
 #[test]
 fn should_lex_svaunit_seq() {
@@ -97,9 +110,7 @@ fn should_lex_svaunit_seq() {
 
     let tokens = lexer.lex();
 
-    for (i, token) in tokens.enumerate() {
-        assert_eq!(token, expected_tokens[i]);
-    }
+    assert_tokens_equal(tokens, expected_tokens);
 }
 
 #[test]
@@ -1641,7 +1652,5 @@ fn should_lex_data_table() {
 
     let tokens = lexer.lex();
 
-    for (i, token) in tokens.enumerate() {
-        assert_eq!(token, expected_tokens[i]);
-    }
+    assert_tokens_equal(tokens, expected_tokens);
 }
