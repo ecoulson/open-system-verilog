@@ -60,7 +60,7 @@ pub struct Lexer {
     mark: Option<Mark>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FilePosition {
     column: u64,
     row: u64,
@@ -138,7 +138,7 @@ impl Lexer {
 
         while self.can_read() {
             match self.lex_token() {
-                Token::WhiteSpace | Token::Comment => (),
+                Token::WhiteSpace(_) | Token::Comment(_) => (),
                 token => tokens.push(token),
             }
         }
@@ -151,7 +151,7 @@ impl Lexer {
     fn execute_lexical_operation(&mut self, operation: LexerOperator) -> Token {
         let file_position = self.file_position();
 
-        let token = match operation {
+        match operation {
             LexerOperator::WhiteSpace => self.lex_white_space(),
             LexerOperator::Comment => self.lex_comments(),
             LexerOperator::Number => self.lex_number(),
@@ -161,12 +161,8 @@ impl Lexer {
             LexerOperator::Keyword => self.lex_keyword(),
             LexerOperator::Punctuation => self.lex_punctuation(),
             LexerOperator::EscapedIdentifier => self.lex_escaped_identifier(),
-        };
-
-        match token {
-            Err(message) => ErrorToken::build_token(message, file_position),
-            Ok(token) => token,
         }
+        .unwrap_or_else(|message| ErrorToken::build_token(message, file_position))
     }
 
     fn lex_token(&mut self) -> Token {
@@ -203,6 +199,8 @@ impl Lexer {
     }
 
     fn lex_white_space(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         if !self.peek()?.is_whitespace() {
             return Err("Not a sequence of white space characters");
         }
@@ -211,7 +209,7 @@ impl Lexer {
             self.read()?;
         }
 
-        Ok(Token::WhiteSpace)
+        Ok(Token::WhiteSpace(file_position))
     }
 
     fn move_to_new_line(&mut self) {
@@ -234,17 +232,21 @@ impl Lexer {
     }
 
     fn lex_line_comment(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         while self.read()? != '\n' {}
 
-        Ok(Token::Comment)
+        Ok(Token::Comment(file_position))
     }
 
     fn lex_block_comment(&mut self) -> Result<Token, &'static str> {
+        let file_position = self.file_position();
+
         while !(self.read()? == '*' && self.peek()? == '/') {}
 
         self.read()?;
 
-        Ok(Token::Comment)
+        Ok(Token::Comment(file_position))
     }
 
     fn lex_number(&mut self) -> Result<Token, &'static str> {
@@ -571,12 +573,15 @@ mod tests {
     fn should_lex_comments() -> Result<(), Error> {
         let expected_tokens = vec![Token::EOF(FilePosition::new(6, 4))];
         let dir = tempdir()?;
-        let file_path = create_temporary_verilog_file(&dir, "//A comment
+        let file_path = create_temporary_verilog_file(
+            &dir,
+            "//A comment
 // A new comment
 /* 
  * A
  * BLOCK
- */")?;
+ */",
+        )?;
         let mut lexer = Lexer::open(file_path.as_str());
 
         let tokens = lexer.lex();

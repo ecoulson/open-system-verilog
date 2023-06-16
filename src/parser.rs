@@ -73,6 +73,14 @@ impl Parser {
         self.token_stream.peek()
     }
 
+    fn file_position(&mut self) -> Result<FilePosition, ParseError> {
+        if let Some(token) = self.peek_token() {
+            return Ok(token.file_position());
+        }
+
+        Err(ParseError::new("", FilePosition::new(0, 0)))
+    }
+
     fn is_next_token_character_sequence(&mut self) -> bool {
         match self.peek_token() {
             Some(Token::CharacterSequence(_)) => true,
@@ -96,12 +104,11 @@ impl Parser {
 
     fn parse_simple_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         let mut identifier = Vec::new();
-        let position: FilePosition;
+        let position: FilePosition = self.file_position()?;
 
         if self.can_read_simple_identifier_beginning_token() {
-            let (character_sequence, file_position) = self.consume_next_token_as_string().unwrap();
+            let character_sequence = self.consume_next_token_as_string().unwrap();
 
-            position = file_position;
             identifier.push(character_sequence);
         } else {
             return Err(ParseError::new(
@@ -111,7 +118,7 @@ impl Parser {
         }
 
         while self.can_read_simple_identifier_token() {
-            if let Some((part, _)) = self.consume_next_token_as_string() {
+            if let Some(part) = self.consume_next_token_as_string() {
                 identifier.push(part);
             }
         }
@@ -140,14 +147,11 @@ impl Parser {
             || self.is_next_token_punctuation(Punctuation::Underscore)
     }
 
-    fn consume_next_token_as_string(&mut self) -> Option<(String, FilePosition)> {
+    fn consume_next_token_as_string(&mut self) -> Option<String> {
         match self.next_token() {
             Some(Token::CharacterSequence(token)) => Some(token.consume()),
             Some(Token::Number(token)) => Some(token.consume()),
-            Some(Token::Punctuation(token)) => {
-                let (punctuation, position) = token.consume();
-                Some((Parser::parse_punctuation(punctuation), position))
-            }
+            Some(Token::Punctuation(token)) => Some(Parser::parse_punctuation(token.consume())),
             _ => None,
         }
     }
@@ -190,27 +194,12 @@ mod tests {
 
     #[test]
     fn should_parse_identifier() {
-        let expected_node = IdentifierNode::new(
-            String::from("abc123$_"),
-            FilePosition::new(1, 1),
-        );
+        let expected_node = IdentifierNode::new(String::from("abc123$_"), FilePosition::new(1, 1));
         let tokens = vec![
-            CharacterSequenceToken::build_token(
-                String::from("abc"),
-                FilePosition::new(1, 1),
-            ),
-            NumberToken::build_token(
-                String::from("123"),
-                FilePosition::new(1, 1),
-            ),
-            PunctuationToken::build_token(
-                Punctuation::Dollar,
-                FilePosition::new(1, 1),
-            ),
-            PunctuationToken::build_token(
-                Punctuation::Underscore,
-                FilePosition::new(1, 1),
-            ),
+            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
+            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
+            PunctuationToken::build_token(Punctuation::Dollar, FilePosition::new(1, 1)),
+            PunctuationToken::build_token(Punctuation::Underscore, FilePosition::new(1, 1)),
         ];
         let mut parser = Parser::new(TokenStream::new(tokens));
 
