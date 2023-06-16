@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::token::{Token, TokenStruct};
+use crate::token::TokenStruct;
 
 #[derive(Debug)]
 pub struct TokenStream {
@@ -8,14 +8,9 @@ pub struct TokenStream {
 }
 
 impl TokenStream {
-    pub fn new(tokens: Vec<Token>) -> TokenStream {
+    pub fn new(tokens: Vec<TokenStruct>) -> TokenStream {
         TokenStream {
-            tokens: VecDeque::from(
-                tokens
-                    .into_iter()
-                    .map(|token| TokenStruct::new(token))
-                    .collect::<Vec<TokenStruct>>(),
-            ),
+            tokens: VecDeque::from(tokens),
         }
     }
 }
@@ -40,26 +35,17 @@ mod tests {
     #[test]
     fn should_iterate_over_token_stream() {
         let expected_tokens = vec![
-            TokenStruct::new(NumberToken::build_token(
-                String::from("123"),
-                FilePosition::new(1, 1),
-            )),
-            TokenStruct::new(StringLiteralToken::build_token(
-                String::from("foo"),
-                FilePosition::new(1, 1),
-            )),
-            TokenStruct::new(CharacterSequenceToken::build_token(
-                String::from("abc"),
-                FilePosition::new(1, 1),
-            )),
-            TokenStruct::new(Token::EOF(FilePosition::new(1, 1))),
+            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
+            StringLiteralToken::build_token(String::from("foo"), FilePosition::new(1, 1)),
+            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 1)),
         ];
 
         let mut token_stream = TokenStream::new(vec![
             NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
             StringLiteralToken::build_token(String::from("foo"), FilePosition::new(1, 1)),
             CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
-            Token::EOF(FilePosition::new(1, 1)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 1)),
         ]);
 
         assert_eq!(token_stream.next().unwrap(), expected_tokens[0]);

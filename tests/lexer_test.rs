@@ -4,16 +4,16 @@ use open_system_verilog::operators::Operator;
 use open_system_verilog::punctuation::Punctuation;
 use open_system_verilog::token::{
     BuildToken, CharacterSequenceToken, KeywordToken, OperatorToken, PunctuationToken,
-    StringLiteralToken, NumberToken, Token,
+    StringLiteralToken, NumberToken, Token, TokenStruct,
 };
 use open_system_verilog::token_stream::TokenStream;
 
-fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<Token>) {
+fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<TokenStruct>) {
     let token_iterator = tokens.enumerate();
     let mut length = 0;
 
     for (i, token) in token_iterator {
-        assert_eq!(token.kind(), &expected_tokens[i]);
+        assert_eq!(token, expected_tokens[i]);
         length += 1;
     }
 
@@ -103,7 +103,7 @@ fn should_lex_svaunit_seq() {
         KeywordToken::build_token(Keyword::Endclass, FilePosition::new(51, 1)),
         PunctuationToken::build_token(Punctuation::Backtick, FilePosition::new(53, 1)),
         CharacterSequenceToken::build_token(String::from("endif"), FilePosition::new(53, 2)),
-        Token::EOF(FilePosition::new(54, 1)),
+        TokenStruct::new(Token::EOF, FilePosition::new(54, 1)),
     ];
     let file_path = "./programs/svaunit_seq.sv";
     let mut lexer = Lexer::open(file_path);
@@ -1645,7 +1645,7 @@ fn should_lex_data_table() {
         PunctuationToken::build_token(Punctuation::RightParentheses, FilePosition::new(358, 1)),
         PunctuationToken::build_token(Punctuation::Semicolon, FilePosition::new(358, 2)),
         KeywordToken::build_token(Keyword::Endmodule, FilePosition::new(361, 1)),
-        Token::EOF(FilePosition::new(362, 1))
+        TokenStruct::new(Token::EOF, FilePosition::new(362, 1)),
     ];
     let file_path = "./programs/data_table.sv";
     let mut lexer = Lexer::open(file_path);
