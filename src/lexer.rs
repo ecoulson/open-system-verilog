@@ -60,7 +60,7 @@ pub struct Lexer {
     mark: Option<Mark>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct FilePosition {
     column: u64,
     row: u64,
@@ -532,7 +532,7 @@ mod tests {
         let mut length = 0;
 
         for (i, token) in token_iterator {
-            assert_eq!(token, expected_tokens[i]);
+            assert_eq!(token.kind(), &expected_tokens[i]);
             length += 1;
         }
 

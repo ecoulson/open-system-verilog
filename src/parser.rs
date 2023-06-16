@@ -4,7 +4,7 @@ use crate::{
     lexer::FilePosition,
     punctuation::Punctuation,
     syntax_node::{IdentifierNode, SyntaxNode},
-    token::{Consume, Token},
+    token::{Consume, Token, TokenStruct},
     token_stream::TokenStream,
 };
 
@@ -53,10 +53,12 @@ impl Parser {
             Ok(token) => root = Some(token),
         }
 
-        match self.next_token() {
-            Some(Token::EOF(_)) => (),
-            _ => self.errors.push(String::from("Expected eof")),
-        };
+        if let Some(token) = self.next_token() {
+            match token.consume() {
+                Token::EOF(_) => (),
+                _ => self.errors.push(String::from("Expected eof")),
+            };
+        }
 
         if !self.errors.is_empty() {
             return Err(&self.errors);
@@ -65,40 +67,52 @@ impl Parser {
         return Ok(root.unwrap());
     }
 
-    fn next_token(&mut self) -> Option<Token> {
+    fn next_token(&mut self) -> Option<TokenStruct> {
         self.token_stream.next()
     }
 
-    fn peek_token(&mut self) -> Option<&Token> {
+    fn peek_token(&mut self) -> Option<&TokenStruct> {
         self.token_stream.peek()
     }
 
     fn file_position(&mut self) -> Result<FilePosition, ParseError> {
         if let Some(token) = self.peek_token() {
-            return Ok(token.file_position());
+            return Ok(token.position());
         }
 
         Err(ParseError::new("", FilePosition::new(0, 0)))
     }
 
     fn is_next_token_character_sequence(&mut self) -> bool {
-        match self.peek_token() {
-            Some(Token::CharacterSequence(_)) => true,
-            _ => false,
+        if let Some(token) = self.peek_token() {
+            match token.kind() {
+                Token::CharacterSequence(_) => true,
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 
     fn is_next_token_number(&mut self) -> bool {
-        match self.peek_token() {
-            Some(Token::Number(_)) => true,
-            _ => false,
+        if let Some(token) = self.peek_token() {
+            match token.kind() {
+                Token::Number(_) => true,
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 
     fn is_next_token_punctuation(&mut self, punctuation: Punctuation) -> bool {
-        match self.peek_token() {
-            Some(Token::Punctuation(token)) => token.punctuation() == &punctuation,
-            _ => false,
+        if let Some(token) = self.peek_token() {
+            match token.kind() {
+                Token::Punctuation(token) => token.punctuation() == &punctuation,
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 
@@ -148,11 +162,15 @@ impl Parser {
     }
 
     fn consume_next_token_as_string(&mut self) -> Option<String> {
-        match self.next_token() {
-            Some(Token::CharacterSequence(token)) => Some(token.consume()),
-            Some(Token::Number(token)) => Some(token.consume()),
-            Some(Token::Punctuation(token)) => Some(Parser::parse_punctuation(token.consume())),
-            _ => None,
+        if let Some(token) = self.next_token() {
+            match token.consume() {
+                Token::CharacterSequence(token) => Some(token.consume()),
+                Token::Number(token) => Some(token.consume()),
+                Token::Punctuation(token) => Some(Parser::parse_punctuation(token.consume())),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 

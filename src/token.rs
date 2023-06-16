@@ -18,6 +18,29 @@ pub enum Token {
     EOF(FilePosition),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct TokenStruct {
+    kind: Token,
+}
+
+impl TokenStruct {
+    pub fn new(kind: Token) -> TokenStruct {
+        TokenStruct { kind }
+    }
+
+    pub fn position(&self) -> FilePosition {
+        self.kind.file_position().clone()
+    }
+
+    pub fn kind(&self) -> &Token {
+        &self.kind
+    }
+
+    pub fn consume(self) -> Token {
+        self.kind
+    }
+}
+
 impl Token {
     pub fn file_position(&self) -> FilePosition {
         match self {
