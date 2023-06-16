@@ -5,31 +5,35 @@ use crate::punctuation::Punctuation;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Token {
-    WhiteSpace(FilePosition),
-    Comment(FilePosition),
-    Number(NumberToken),
-    StringLiteral(StringLiteralToken),
-    CharacterSequence(CharacterSequenceToken),
-    Operator(OperatorToken),
-    Punctuation(PunctuationToken),
-    Keyword(KeywordToken),
-    EscapedIdentifier(EscapedIdentifierToken),
-    Error(ErrorToken),
-    EOF(FilePosition),
+    WhiteSpace,
+    Comment,
+    Number(String),
+    StringLiteral(String),
+    CharacterSequence(String),
+    Operator(Operator),
+    Punctuation(Punctuation),
+    Keyword(Keyword),
+    EscapedIdentifier(String),
+    Error(&'static str),
+    EOF,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TokenStruct {
     kind: Token,
+    file_position: FilePosition,
 }
 
 impl TokenStruct {
-    pub fn new(kind: Token) -> TokenStruct {
-        TokenStruct { kind }
+    pub fn new(kind: Token, file_position: FilePosition) -> TokenStruct {
+        TokenStruct {
+            kind,
+            file_position,
+        }
     }
 
     pub fn position(&self) -> FilePosition {
-        self.kind.file_position().clone()
+        self.file_position.clone()
     }
 
     pub fn kind(&self) -> &Token {
@@ -41,50 +45,18 @@ impl TokenStruct {
     }
 }
 
-impl Token {
-    pub fn file_position(&self) -> FilePosition {
-        match self {
-            Token::Comment(position) | Token::WhiteSpace(position) | Token::EOF(position) => {
-                position.clone()
-            }
-            Token::Number(token) => token.position.clone(),
-            Token::StringLiteral(token) => token.position.clone(),
-            Token::CharacterSequence(token) => token.position.clone(),
-            Token::Operator(token) => token.position.clone(),
-            Token::Punctuation(token) => token.position.clone(),
-            Token::Keyword(token) => token.position.clone(),
-            Token::EscapedIdentifier(token) => token.position.clone(),
-            Token::Error(token) => token.position.clone(),
-        }
-    }
-}
-
 pub trait TokenFromSequence {
-    fn from_sequence(sequence: &str, position: FilePosition) -> Result<Token, &'static str>;
+    fn from_sequence(sequence: &str, position: FilePosition) -> Result<TokenStruct, &'static str>;
 }
 
 pub trait BuildToken<T> {
-    fn build_token(value: T, position: FilePosition) -> Token;
-}
-
-pub trait Consume {
-    type Item;
-
-    fn consume(self) -> Self::Item;
+    fn build_token(value: T, position: FilePosition) -> TokenStruct;
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NumberToken {
     number: String,
     position: FilePosition,
-}
-
-impl Consume for NumberToken {
-    type Item = String;
-
-    fn consume(self) -> Self::Item {
-        return self.number;
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -97,14 +69,6 @@ pub struct StringLiteralToken {
 pub struct CharacterSequenceToken {
     character_sequence: String,
     position: FilePosition,
-}
-
-impl Consume for CharacterSequenceToken {
-    type Item = String;
-
-    fn consume(self) -> Self::Item {
-        return self.character_sequence;
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -122,14 +86,6 @@ pub struct PunctuationToken {
 impl PunctuationToken {
     pub fn punctuation(&self) -> &Punctuation {
         &self.punctuation
-    }
-}
-
-impl Consume for PunctuationToken {
-    type Item = Punctuation;
-
-    fn consume(self) -> Self::Item {
-        return self.punctuation;
     }
 }
 
@@ -152,67 +108,55 @@ pub struct ErrorToken {
 }
 
 impl BuildToken<String> for NumberToken {
-    fn build_token(number: String, position: FilePosition) -> Token {
-        Token::Number(NumberToken { number, position })
+    fn build_token(number: String, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::Number(number), position)
     }
 }
 
 impl BuildToken<String> for StringLiteralToken {
-    fn build_token(string_literal: String, position: FilePosition) -> Token {
-        Token::StringLiteral(StringLiteralToken {
-            string_literal,
-            position,
-        })
+    fn build_token(string_literal: String, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::StringLiteral(string_literal), position)
     }
 }
 
 impl BuildToken<String> for CharacterSequenceToken {
-    fn build_token(character_sequence: String, position: FilePosition) -> Token {
-        Token::CharacterSequence(CharacterSequenceToken {
-            character_sequence,
-            position,
-        })
+    fn build_token(character_sequence: String, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::CharacterSequence(character_sequence), position)
     }
 }
 
 impl BuildToken<Operator> for OperatorToken {
-    fn build_token(operator: Operator, position: FilePosition) -> Token {
-        Token::Operator(OperatorToken { operator, position })
+    fn build_token(operator: Operator, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::Operator(operator), position)
     }
 }
 
 impl BuildToken<Keyword> for KeywordToken {
-    fn build_token(keyword: Keyword, position: FilePosition) -> Token {
-        Token::Keyword(KeywordToken { keyword, position })
+    fn build_token(keyword: Keyword, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::Keyword(keyword), position)
     }
 }
 
 impl BuildToken<Punctuation> for PunctuationToken {
-    fn build_token(punctuation: Punctuation, position: FilePosition) -> Token {
-        Token::Punctuation(PunctuationToken {
-            punctuation,
-            position,
-        })
+    fn build_token(punctuation: Punctuation, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::Punctuation(punctuation), position)
     }
 }
 
 impl BuildToken<String> for EscapedIdentifierToken {
-    fn build_token(identifier: String, position: FilePosition) -> Token {
-        Token::EscapedIdentifier(EscapedIdentifierToken {
-            identifier,
-            position,
-        })
+    fn build_token(identifier: String, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::EscapedIdentifier(identifier), position)
     }
 }
 
 impl BuildToken<&'static str> for ErrorToken {
-    fn build_token(message: &'static str, position: FilePosition) -> Token {
-        Token::Error(ErrorToken { message, position })
+    fn build_token(message: &'static str, position: FilePosition) -> TokenStruct {
+        TokenStruct::new(Token::Error(message), position)
     }
 }
 
 impl TokenFromSequence for OperatorToken {
-    fn from_sequence(sequence: &str, position: FilePosition) -> Result<Token, &'static str> {
+    fn from_sequence(sequence: &str, position: FilePosition) -> Result<TokenStruct, &'static str> {
         match sequence {
             "+" => Ok(OperatorToken::build_token(Operator::Addition, position)),
             "-" => Ok(OperatorToken::build_token(Operator::Subtraction, position)),
@@ -348,7 +292,7 @@ impl TokenFromSequence for OperatorToken {
 }
 
 impl TokenFromSequence for KeywordToken {
-    fn from_sequence(sequence: &str, position: FilePosition) -> Result<Token, &'static str> {
+    fn from_sequence(sequence: &str, position: FilePosition) -> Result<TokenStruct, &'static str> {
         match sequence {
             "accept_on" => Ok(KeywordToken::build_token(Keyword::AcceptOn, position)),
             "alias" => Ok(KeywordToken::build_token(Keyword::Alias, position)),

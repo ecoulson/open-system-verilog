@@ -4,7 +4,7 @@ use crate::{
     lexer::FilePosition,
     punctuation::Punctuation,
     syntax_node::{IdentifierNode, SyntaxNode},
-    token::{Consume, Token, TokenStruct},
+    token::{Token, TokenStruct},
     token_stream::TokenStream,
 };
 
@@ -55,7 +55,7 @@ impl Parser {
 
         if let Some(token) = self.next_token() {
             match token.consume() {
-                Token::EOF(_) => (),
+                Token::EOF => (),
                 _ => self.errors.push(String::from("Expected eof")),
             };
         }
@@ -108,7 +108,7 @@ impl Parser {
     fn is_next_token_punctuation(&mut self, punctuation: Punctuation) -> bool {
         if let Some(token) = self.peek_token() {
             match token.kind() {
-                Token::Punctuation(token) => token.punctuation() == &punctuation,
+                Token::Punctuation(other) => other == &punctuation,
                 _ => false,
             }
         } else {
@@ -164,9 +164,8 @@ impl Parser {
     fn consume_next_token_as_string(&mut self) -> Option<String> {
         if let Some(token) = self.next_token() {
             match token.consume() {
-                Token::CharacterSequence(token) => Some(token.consume()),
-                Token::Number(token) => Some(token.consume()),
-                Token::Punctuation(token) => Some(Parser::parse_punctuation(token.consume())),
+                Token::CharacterSequence(string) | Token::Number(string) => Some(string),
+                Token::Punctuation(token) => Some(Parser::parse_punctuation(token)),
                 _ => None,
             }
         } else {

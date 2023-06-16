@@ -5,7 +5,7 @@ use crate::char_reader::CharReader;
 use crate::keywords::KEYWORD_SYMBOLS;
 use crate::operators::OPERATOR_SYMBOLS;
 use crate::punctuation::Punctuation;
-use crate::token::{BuildToken, ErrorToken, EscapedIdentifierToken, Token};
+use crate::token::{BuildToken, ErrorToken, EscapedIdentifierToken, Token, TokenStruct};
 use crate::token::{
     CharacterSequenceToken, KeywordToken, NumberToken, OperatorToken, PunctuationToken,
     StringLiteralToken, TokenFromSequence,
@@ -137,18 +137,19 @@ impl Lexer {
         let mut tokens = Vec::new();
 
         while self.can_read() {
-            match self.lex_token() {
-                Token::WhiteSpace(_) | Token::Comment(_) => (),
-                token => tokens.push(token),
+            let token = self.lex_token();
+            match token.kind() {
+                Token::WhiteSpace | Token::Comment => (),
+                _ => tokens.push(token),
             }
         }
 
-        tokens.push(Token::EOF(self.file_position()));
+        tokens.push(TokenStruct::new(Token::EOF, self.file_position()));
 
         TokenStream::new(tokens)
     }
 
-    fn execute_lexical_operation(&mut self, operation: LexerOperator) -> Token {
+    fn execute_lexical_operation(&mut self, operation: LexerOperator) -> TokenStruct {
         let file_position = self.file_position();
 
         match operation {
@@ -165,7 +166,7 @@ impl Lexer {
         .unwrap_or_else(|message| ErrorToken::build_token(message, file_position))
     }
 
-    fn lex_token(&mut self) -> Token {
+    fn lex_token(&mut self) -> TokenStruct {
         let file_position = self.file_position();
         let mut best_token =
             ErrorToken::build_token("Failed to read any characters", file_position);
@@ -177,7 +178,8 @@ impl Lexer {
             let mark = Mark::build(self.position(), self.row, self.column);
             self.go_to_mark();
 
-            if matches!(best_token, Token::Error(_)) && !matches!(token, Token::Error(_))
+            if matches!(best_token.kind(), Token::Error(_))
+                && !matches!(token.kind(), Token::Error(_))
                 || best_mark.position < mark.position
             {
                 best_mark = mark;
@@ -198,7 +200,7 @@ impl Lexer {
         self.char_reader.has_chars()
     }
 
-    fn lex_white_space(&mut self) -> Result<Token, &'static str> {
+    fn lex_white_space(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         if !self.peek()?.is_whitespace() {
@@ -209,7 +211,7 @@ impl Lexer {
             self.read()?;
         }
 
-        Ok(Token::WhiteSpace(file_position))
+        Ok(TokenStruct::new(Token::WhiteSpace, file_position))
     }
 
     fn move_to_new_line(&mut self) {
@@ -217,7 +219,7 @@ impl Lexer {
         self.column = 1;
     }
 
-    fn lex_comments(&mut self) -> Result<Token, &'static str> {
+    fn lex_comments(&mut self) -> Result<TokenStruct, &'static str> {
         if self.peek()? != '/' {
             return Err("Does not start with slash");
         }
@@ -231,25 +233,25 @@ impl Lexer {
         }
     }
 
-    fn lex_line_comment(&mut self) -> Result<Token, &'static str> {
+    fn lex_line_comment(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         while self.read()? != '\n' {}
 
-        Ok(Token::Comment(file_position))
+        Ok(TokenStruct::new(Token::Comment, file_position))
     }
 
-    fn lex_block_comment(&mut self) -> Result<Token, &'static str> {
+    fn lex_block_comment(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         while !(self.read()? == '*' && self.peek()? == '/') {}
 
         self.read()?;
 
-        Ok(Token::Comment(file_position))
+        Ok(TokenStruct::new(Token::Comment, file_position))
     }
 
-    fn lex_number(&mut self) -> Result<Token, &'static str> {
+    fn lex_number(&mut self) -> Result<TokenStruct, &'static str> {
         let mut number = String::new();
         let file_position = self.file_position();
 
@@ -264,7 +266,7 @@ impl Lexer {
         Ok(NumberToken::build_token(number, file_position))
     }
 
-    fn lex_string_literal(&mut self) -> Result<Token, &'static str> {
+    fn lex_string_literal(&mut self) -> Result<TokenStruct, &'static str> {
         let mut string_literal = String::new();
         let file_position = self.file_position();
 
@@ -304,7 +306,7 @@ impl Lexer {
         }
     }
 
-    fn lex_character_sequence(&mut self) -> Result<Token, &'static str> {
+    fn lex_character_sequence(&mut self) -> Result<TokenStruct, &'static str> {
         let mut character_sequence = String::from("");
         let file_position = self.file_position();
 
@@ -322,7 +324,7 @@ impl Lexer {
         ))
     }
 
-    fn lex_escaped_identifier(&mut self) -> Result<Token, &'static str> {
+    fn lex_escaped_identifier(&mut self) -> Result<TokenStruct, &'static str> {
         if self.peek()? != '\\' {
             return Err("Escaped identifier must start with \\");
         }
@@ -345,7 +347,7 @@ impl Lexer {
         ))
     }
 
-    fn lex_operator(&mut self) -> Result<Token, &'static str> {
+    fn lex_operator(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         match self.get_best_sequence(&OPERATOR_SYMBOLS) {
@@ -403,7 +405,7 @@ impl Lexer {
         }
     }
 
-    fn lex_keyword(&mut self) -> Result<Token, &'static str> {
+    fn lex_keyword(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         match self.get_best_sequence(&KEYWORD_SYMBOLS) {
@@ -412,7 +414,7 @@ impl Lexer {
         }
     }
 
-    fn lex_punctuation(&mut self) -> Result<Token, &'static str> {
+    fn lex_punctuation(&mut self) -> Result<TokenStruct, &'static str> {
         let file_position = self.file_position();
 
         let result = match self.peek()? {
@@ -507,7 +509,7 @@ mod tests {
     use crate::punctuation::Punctuation;
     use crate::token::{
         BuildToken, CharacterSequenceToken, ErrorToken, EscapedIdentifierToken, KeywordToken,
-        NumberToken, OperatorToken, PunctuationToken, StringLiteralToken,
+        NumberToken, OperatorToken, PunctuationToken, StringLiteralToken, TokenStruct,
     };
     use crate::token_stream::TokenStream;
 
@@ -527,12 +529,12 @@ mod tests {
         Ok(path)
     }
 
-    fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<Token>) {
+    fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<TokenStruct>) {
         let token_iterator = tokens.enumerate();
         let mut length = 0;
 
         for (i, token) in token_iterator {
-            assert_eq!(token.kind(), &expected_tokens[i]);
+            assert_eq!(token, expected_tokens[i]);
             length += 1;
         }
 
@@ -541,7 +543,7 @@ mod tests {
 
     #[test]
     fn should_lex_empty_file() -> Result<(), Error> {
-        let expected_tokens = vec![Token::EOF(FilePosition::new(1, 1))];
+        let expected_tokens = vec![TokenStruct::new(Token::EOF, FilePosition::new(1, 1))];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "")?;
         let mut lexer = Lexer::open(file_path.as_str());
@@ -556,7 +558,7 @@ mod tests {
 
     #[test]
     fn should_lex_white_space() -> Result<(), Error> {
-        let expected_tokens = vec![Token::EOF(FilePosition::new(2, 4))];
+        let expected_tokens = vec![TokenStruct::new(Token::EOF, FilePosition::new(2, 4))];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "\n\r \t")?;
         let mut lexer = Lexer::open(file_path.as_str());
@@ -571,7 +573,7 @@ mod tests {
 
     #[test]
     fn should_lex_comments() -> Result<(), Error> {
-        let expected_tokens = vec![Token::EOF(FilePosition::new(6, 4))];
+        let expected_tokens = vec![TokenStruct::new(Token::EOF, FilePosition::new(6, 4))];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
             &dir,
@@ -594,7 +596,7 @@ mod tests {
     fn should_lex_number() -> Result<(), Error> {
         let expected_tokens = vec![
             NumberToken::build_token(String::from("42069"), FilePosition::new(1, 1)),
-            Token::EOF(FilePosition::new(1, 6)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 6)),
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "42069")?;
@@ -615,7 +617,7 @@ mod tests {
                 String::from("Thelonius\nMonk"),
                 FilePosition::new(2, 1),
             ),
-            Token::EOF(FilePosition::new(3, 6)),
+            TokenStruct::new(Token::EOF, FilePosition::new(3, 6)),
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
@@ -638,7 +640,7 @@ Monk\"",
         let file_path = create_temporary_verilog_file(&dir, "\"Unclosed")?;
         let expected_tokens = vec![
             ErrorToken::build_token("String literal is never closed", FilePosition::new(1, 1)),
-            Token::EOF(FilePosition::new(1, 10)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 10)),
         ];
         let mut lexer = Lexer::open(file_path.as_str());
 
@@ -652,7 +654,7 @@ Monk\"",
     fn should_lex_character_sequence() -> Result<(), Error> {
         let expected_tokens = vec![
             CharacterSequenceToken::build_token(String::from("abcXYZ"), FilePosition::new(1, 1)),
-            Token::EOF(FilePosition::new(1, 7)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 7)),
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(&dir, "abcXYZ")?;
@@ -673,7 +675,7 @@ Monk\"",
                 String::from("\\@#art\\()"),
                 FilePosition::new(1, 1),
             ),
-            Token::EOF(FilePosition::new(2, 1)),
+            TokenStruct::new(Token::EOF, FilePosition::new(2, 1)),
         ];
         let mut lexer = Lexer::open(file_path.as_str());
 
@@ -692,7 +694,7 @@ Monk\"",
                 String::from("\\@#art\\()"),
                 FilePosition::new(1, 1),
             ),
-            Token::EOF(FilePosition::new(1, 10)),
+            TokenStruct::new(Token::EOF, FilePosition::new(1, 10)),
         ];
         let mut lexer = Lexer::open(file_path.as_str());
 
@@ -778,7 +780,7 @@ Monk\"",
                 Operator::ArithmeticRightShiftAssignment,
                 FilePosition::new(4, 14),
             ),
-            Token::EOF(FilePosition::new(4, 18)),
+            TokenStruct::new(Token::EOF, FilePosition::new(4, 18)),
         ];
         let mut lexer = Lexer::open(file_path.as_str());
 
@@ -1037,7 +1039,7 @@ Monk\"",
             KeywordToken::build_token(Keyword::Wor, FilePosition::new(244, 1)),
             KeywordToken::build_token(Keyword::Xnor, FilePosition::new(245, 1)),
             KeywordToken::build_token(Keyword::Xor, FilePosition::new(246, 1)),
-            Token::EOF(FilePosition::new(246, 4)),
+            TokenStruct::new(Token::EOF, FilePosition::new(246, 4)),
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
@@ -1318,7 +1320,7 @@ xor",
             PunctuationToken::build_token(Punctuation::Comma, FilePosition::new(16, 1)),
             PunctuationToken::build_token(Punctuation::Apostrophe, FilePosition::new(17, 1)),
             PunctuationToken::build_token(Punctuation::Underscore, FilePosition::new(18, 1)),
-            Token::EOF(FilePosition::new(18, 2)),
+            TokenStruct::new(Token::EOF, FilePosition::new(18, 2)),
         ];
         let dir = tempdir()?;
         let file_path = create_temporary_verilog_file(
