@@ -92,7 +92,6 @@ fn should_lex_svaunit_seq() {
         CharacterSequenceToken::build_token(String::from("endif"), FilePosition::new(53, 2)),
         Token::EOF(FilePosition::new(54, 1)),
     ];
-
     let file_path = "./programs/svaunit_seq.sv";
     let mut lexer = Lexer::open(file_path);
 
@@ -1637,7 +1636,6 @@ fn should_lex_data_table() {
         KeywordToken::build_token(Keyword::Endmodule, FilePosition::new(361, 1)),
         Token::EOF(FilePosition::new(362, 1))
     ];
-
     let file_path = "./programs/data_table.sv";
     let mut lexer = Lexer::open(file_path);
 
