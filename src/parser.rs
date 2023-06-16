@@ -165,35 +165,12 @@ impl Parser {
         if let Some(token) = self.next_token() {
             match token.consume() {
                 Token::CharacterSequence(string) | Token::Number(string) => Some(string),
-                Token::Punctuation(token) => Some(Parser::parse_punctuation(token)),
+                Token::Punctuation(punctuation) => Some(punctuation.to_string()),
                 _ => None,
             }
         } else {
             None
         }
-    }
-
-    fn parse_punctuation(punctuation: Punctuation) -> String {
-        String::from(match punctuation {
-            Punctuation::Dollar => "$",
-            Punctuation::Pound => "#",
-            Punctuation::Colon => ":",
-            Punctuation::Comma => ",",
-            Punctuation::Period => ".",
-            Punctuation::Asperand => "@",
-            Punctuation::Backtick => "`",
-            Punctuation::LeftBrace => "{",
-            Punctuation::BackSlash => "\\",
-            Punctuation::Semicolon => ";",
-            Punctuation::RightBrace => "}",
-            Punctuation::Apostrophe => "'",
-            Punctuation::Underscore => "_",
-            Punctuation::LeftBracket => "[",
-            Punctuation::RightBracket => "]",
-            Punctuation::QuestionMark => "?",
-            Punctuation::LeftParentheses => "(",
-            Punctuation::RightParentheses => ")",
-        })
     }
 }
 
