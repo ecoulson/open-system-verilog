@@ -200,11 +200,8 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::{
-        lexer::FilePosition,
-        punctuation::Punctuation,
-        syntax_node::IdentifierNode,
-        token::{BuildToken, CharacterSequenceToken, NumberToken, PunctuationToken},
-        token_stream::TokenStream,
+        lexer::FilePosition, punctuation::Punctuation, syntax_node::IdentifierNode,
+        token::TokenStruct, token_stream::TokenStream,
     };
 
     use super::Parser;
@@ -213,10 +210,13 @@ mod tests {
     fn should_parse_identifier() {
         let expected_node = IdentifierNode::new(String::from("abc123$_"), FilePosition::new(1, 1));
         let tokens = vec![
-            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
-            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
-            PunctuationToken::build_token(Punctuation::Dollar, FilePosition::new(1, 1)),
-            PunctuationToken::build_token(Punctuation::Underscore, FilePosition::new(1, 1)),
+            TokenStruct::build_character_sequence_token(
+                String::from("abc"),
+                FilePosition::new(1, 1),
+            ),
+            TokenStruct::build_number_token(String::from("123"), FilePosition::new(1, 1)),
+            TokenStruct::build_punctuation_token(Punctuation::Dollar, FilePosition::new(1, 1)),
+            TokenStruct::build_punctuation_token(Punctuation::Underscore, FilePosition::new(1, 1)),
         ];
         let mut parser = Parser::new(TokenStream::new(tokens));
 

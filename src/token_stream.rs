@@ -26,26 +26,30 @@ impl Iterator for TokenStream {
 #[cfg(test)]
 mod tests {
     use crate::lexer::FilePosition;
-    use crate::token::{
-        BuildToken, CharacterSequenceToken, NumberToken, StringLiteralToken, Token, TokenStruct,
-    };
+    use crate::token::TokenStruct;
 
     use super::TokenStream;
 
     #[test]
     fn should_iterate_over_token_stream() {
         let expected_tokens = vec![
-            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
-            StringLiteralToken::build_token(String::from("foo"), FilePosition::new(1, 1)),
-            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
-            TokenStruct::new(Token::EOF, FilePosition::new(1, 1)),
+            TokenStruct::build_number_token(String::from("123"), FilePosition::new(1, 1)),
+            TokenStruct::build_string_literal_token(String::from("foo"), FilePosition::new(1, 1)),
+            TokenStruct::build_character_sequence_token(
+                String::from("abc"),
+                FilePosition::new(1, 1),
+            ),
+            TokenStruct::build_eof_token(FilePosition::new(1, 1)),
         ];
 
         let mut token_stream = TokenStream::new(vec![
-            NumberToken::build_token(String::from("123"), FilePosition::new(1, 1)),
-            StringLiteralToken::build_token(String::from("foo"), FilePosition::new(1, 1)),
-            CharacterSequenceToken::build_token(String::from("abc"), FilePosition::new(1, 1)),
-            TokenStruct::new(Token::EOF, FilePosition::new(1, 1)),
+            TokenStruct::build_number_token(String::from("123"), FilePosition::new(1, 1)),
+            TokenStruct::build_string_literal_token(String::from("foo"), FilePosition::new(1, 1)),
+            TokenStruct::build_character_sequence_token(
+                String::from("abc"),
+                FilePosition::new(1, 1),
+            ),
+            TokenStruct::build_eof_token(FilePosition::new(1, 1)),
         ]);
 
         assert_eq!(token_stream.next().unwrap(), expected_tokens[0]);
