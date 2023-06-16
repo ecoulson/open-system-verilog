@@ -16,8 +16,6 @@ pub struct CharReader {
     file: File,
 }
 
-// TODO: If a file is larger than usize::MAX this will cause issues for reading
-// the file. Should really just rely on modular arithmetic
 impl CharReader {
     pub fn open(file_path: &str) -> CharReader {
         let file = File::open(file_path).unwrap_or_else(|error| {
