@@ -1,4 +1,4 @@
-use crate::{lexer::FilePosition, token::TokenStruct};
+use crate::{lexer::FilePosition, token::Token};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Punctuation {
@@ -23,77 +23,77 @@ pub enum Punctuation {
 }
 
 impl Punctuation {
-    pub fn from_char(ch: char, file_position: FilePosition) -> Result<TokenStruct, &'static str> {
+    pub fn from_char(ch: char, file_position: FilePosition) -> Result<Token, &'static str> {
         match ch {
-            '@' => Ok(TokenStruct::build_punctuation_token(
+            '@' => Ok(Token::build_punctuation_token(
                 Punctuation::Asperand,
                 file_position,
             )),
-            '#' => Ok(TokenStruct::build_punctuation_token(
+            '#' => Ok(Token::build_punctuation_token(
                 Punctuation::Pound,
                 file_position,
             )),
-            '$' => Ok(TokenStruct::build_punctuation_token(
+            '$' => Ok(Token::build_punctuation_token(
                 Punctuation::Dollar,
                 file_position,
             )),
-            '(' => Ok(TokenStruct::build_punctuation_token(
+            '(' => Ok(Token::build_punctuation_token(
                 Punctuation::LeftParentheses,
                 file_position,
             )),
-            ')' => Ok(TokenStruct::build_punctuation_token(
+            ')' => Ok(Token::build_punctuation_token(
                 Punctuation::RightParentheses,
                 file_position,
             )),
-            '[' => Ok(TokenStruct::build_punctuation_token(
+            '[' => Ok(Token::build_punctuation_token(
                 Punctuation::LeftBracket,
                 file_position,
             )),
-            ']' => Ok(TokenStruct::build_punctuation_token(
+            ']' => Ok(Token::build_punctuation_token(
                 Punctuation::RightBracket,
                 file_position,
             )),
-            '{' => Ok(TokenStruct::build_punctuation_token(
+            '{' => Ok(Token::build_punctuation_token(
                 Punctuation::LeftBrace,
                 file_position,
             )),
-            '}' => Ok(TokenStruct::build_punctuation_token(
+            '}' => Ok(Token::build_punctuation_token(
                 Punctuation::RightBrace,
                 file_position,
             )),
-            '\\' => Ok(TokenStruct::build_punctuation_token(
+            '\\' => Ok(Token::build_punctuation_token(
                 Punctuation::BackSlash,
                 file_position,
             )),
-            ';' => Ok(TokenStruct::build_punctuation_token(
+            ';' => Ok(Token::build_punctuation_token(
                 Punctuation::Semicolon,
                 file_position,
             )),
-            ':' => Ok(TokenStruct::build_punctuation_token(
+            ':' => Ok(Token::build_punctuation_token(
                 Punctuation::Colon,
                 file_position,
             )),
-            '?' => Ok(TokenStruct::build_punctuation_token(
+            '?' => Ok(Token::build_punctuation_token(
                 Punctuation::QuestionMark,
                 file_position,
             )),
-            '`' => Ok(TokenStruct::build_punctuation_token(
+            '`' => Ok(Token::build_punctuation_token(
                 Punctuation::Backtick,
                 file_position,
             )),
-            '.' => Ok(TokenStruct::build_punctuation_token(
+            '.' => Ok(Token::build_punctuation_token(
                 Punctuation::Period,
                 file_position,
             )),
-            ',' => Ok(TokenStruct::build_punctuation_token(
+            ',' => Ok(Token::build_punctuation_token(
                 Punctuation::Comma,
                 file_position,
             )),
-            '\'' => Ok(TokenStruct::build_punctuation_token(
+            '\'' => Ok(Token::build_punctuation_token(
                 Punctuation::Apostrophe,
                 file_position,
             )),
-            '_' => Ok(TokenStruct::build_punctuation_token(
+            '_' => Ok(Token::build_punctuation_token(
                 Punctuation::Underscore,
                 file_position,
             )),
