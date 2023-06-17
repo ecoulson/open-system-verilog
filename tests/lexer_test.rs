@@ -1,5 +1,5 @@
 use open_system_verilog::keywords::Keyword;
-use open_system_verilog::lexer::{FilePosition, Lexer};
+use open_system_verilog::lexer::{FilePosition, Lexer, LexerError};
 use open_system_verilog::operators::Operator;
 use open_system_verilog::punctuation::Punctuation;
 use open_system_verilog::token::TokenStruct;
@@ -18,7 +18,7 @@ fn assert_tokens_equal(tokens: TokenStream, expected_tokens: Vec<TokenStruct>) {
 }
 
 #[test]
-fn should_lex_svaunit_seq() {
+fn should_lex_svaunit_seq() -> Result<(), LexerError> {
     let expected_tokens = vec![
         TokenStruct::build_punctuation_token(Punctuation::Backtick, FilePosition::new(21, 1)),
         TokenStruct::build_character_sequence_token(String::from("ifndef"), FilePosition::new(21, 2)),
@@ -103,15 +103,17 @@ fn should_lex_svaunit_seq() {
         TokenStruct::build_eof_token(FilePosition::new(54, 1)),
     ];
     let file_path = "./programs/svaunit_seq.sv";
-    let mut lexer = Lexer::open(file_path);
+    let mut lexer = Lexer::open(file_path)?;
 
-    let tokens = lexer.lex();
+    let tokens = lexer.lex()?;
 
     assert_tokens_equal(tokens, expected_tokens);
+
+    Ok(())
 }
 
 #[test]
-fn should_lex_data_table() {
+fn should_lex_data_table() -> Result<(), LexerError> {
     let expected_tokens = vec![
         TokenStruct::build_keyword_token(Keyword::Import, FilePosition::new(7, 1)),
         TokenStruct::build_character_sequence_token(String::from("hash_table"), FilePosition::new(7, 8)),
@@ -1645,9 +1647,11 @@ fn should_lex_data_table() {
         TokenStruct::build_eof_token(FilePosition::new(362, 1)),
     ];
     let file_path = "./programs/data_table.sv";
-    let mut lexer = Lexer::open(file_path);
+    let mut lexer = Lexer::open(file_path)?;
 
-    let tokens = lexer.lex();
+    let tokens = lexer.lex()?;
 
     assert_tokens_equal(tokens, expected_tokens);
+
+    Ok(())
 }
