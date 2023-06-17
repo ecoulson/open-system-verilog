@@ -1,9 +1,9 @@
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::Seek;
-use std::io::ErrorKind;
 use std::io::Read;
 use std::io::SeekFrom;
-use std::process;
+use std::num::TryFromIntError;
 
 const BUFFER_SIZE: usize = 8192;
 
@@ -16,52 +16,73 @@ pub struct CharReader {
     file: File,
 }
 
-impl CharReader {
-    pub fn open(file_path: &str) -> CharReader {
-        let file = File::open(file_path).unwrap_or_else(|error| {
-            match error.kind() {
-                ErrorKind::NotFound => eprintln!("File not found at path {}", file_path),
-                ErrorKind::PermissionDenied => eprintln!(
-                    "Do not have permission to access file at path {}",
-                    file_path
-                ),
-                _ => eprintln!(
-                    "Something went wrong opening the file at path {}",
-                    file_path
-                ),
-            }
-            process::exit(1)
-        });
+#[derive(Debug)]
+pub enum CharReaderError {
+    IO(std::io::Error),
+    Overflow(TryFromIntError),
+}
 
+impl std::fmt::Display for CharReaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CharReaderError::IO(error) => write!(f, "IO Error: {}", error),
+            CharReaderError::Overflow(error) => write!(f, "Overflow Error: {}", error),
+        }
+    }
+}
+
+impl Error for CharReaderError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            CharReaderError::IO(error) => Some(error),
+            CharReaderError::Overflow(_) => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for CharReaderError {
+    fn from(e: std::io::Error) -> Self {
+        CharReaderError::IO(e)
+    }
+}
+
+impl From<TryFromIntError> for CharReaderError {
+    fn from(error: TryFromIntError) -> Self {
+        CharReaderError::Overflow(error)
+    }
+}
+
+impl CharReader {
+    pub fn open(file_path: &str) -> Result<CharReader, CharReaderError> {
         let mut char_reader = CharReader {
             seek_position: 0,
             block: 0,
             initialized: false,
             buffer: [0; BUFFER_SIZE],
-            file,
+            file: File::open(file_path)?,
         };
 
-        char_reader.read_into_buffer();
+        char_reader.read_into_buffer()?;
 
-        char_reader
+        Ok(char_reader)
     }
 
-    pub fn has_chars(&mut self) -> bool {
-        !self.peek_char().is_none()
+    pub fn has_chars(&mut self) -> Result<bool, CharReaderError> {
+        Ok(!self.peek_char()?.is_none())
     }
 
     pub fn get_position(&self) -> u64 {
         self.seek_position
     }
 
-    pub fn peek_char(&mut self) -> Option<char> {
-        self.read_into_buffer();
+    pub fn peek_char(&mut self) -> Result<Option<char>, CharReaderError> {
+        self.read_into_buffer()?;
         let peeked_char = self.get_current_char();
 
-        match peeked_char {
+        Ok(match peeked_char {
             0 => None,
             _ => Some(char::from(peeked_char)),
-        }
+        })
     }
 
     fn get_current_block(&self) -> usize {
@@ -72,56 +93,44 @@ impl CharReader {
         self.buffer[self.seek_position as usize % self.buffer.len()]
     }
 
-    pub fn read_char(&mut self) -> Option<char> {
-        let current_char = self.peek_char();
+    pub fn read_char(&mut self) -> Result<Option<char>, CharReaderError> {
+        let current_char = self.peek_char()?;
         self.seek_position += 1;
 
-        current_char
+        Ok(current_char)
     }
 
-    pub fn seek_from_start(&mut self, n: u64) {
+    pub fn seek_from_start(&mut self, n: u64) -> Result<(), CharReaderError> {
         if n == self.seek_position {
-            return;
+            return Ok(());
         }
 
         self.seek_position = n;
         let buffer_seek_position = self.get_current_block() * BUFFER_SIZE;
-        let buffer_seek_position: u64 = buffer_seek_position.try_into().unwrap_or_else(|_| {
-            eprintln!("Current seek position will overflow a u64");
-            process::exit(1);
-        });
+        self.file
+            .seek(SeekFrom::Start(buffer_seek_position.try_into()?))?;
+        self.read_into_buffer()?;
 
-        if let Err(_) = self.file.seek(SeekFrom::Start(buffer_seek_position)) {
-            eprintln!("Failed to seek back a buffered block");
-            process::exit(1);
-        }
-
-        self.read_into_buffer();
+        Ok(())
     }
 
-    fn read_into_buffer(&mut self) {
+    fn read_into_buffer(&mut self) -> Result<(), CharReaderError> {
         if self.initialized && self.get_current_block() == self.block {
-            return;
+            return Ok(());
         }
 
         self.buffer.fill(0);
+        self.file.read(&mut self.buffer)?;
         self.initialized = true;
         self.block = self.get_current_block();
-        self.file.read(&mut self.buffer).unwrap_or_else(|error| {
-            match error.kind() {
-                ErrorKind::Interrupted => {
-                    eprintln!("IO Operation interrupted, consider implementing read retries")
-                }
-                _ => eprintln!("An error occured reading bytes into the buffer"),
-            }
-            process::exit(1)
-        });
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{CharReader, BUFFER_SIZE};
+    use super::{CharReader, CharReaderError, BUFFER_SIZE};
     use std::fs::File;
     use std::io::prelude::Write;
     use std::io::Error;
@@ -150,28 +159,38 @@ mod tests {
         char::from(i + b'0')
     }
 
+    fn assert_reader_has_read_file(
+        reader: &mut CharReader,
+        file_size: usize,
+        blocks: u8,
+    ) -> Result<(), CharReaderError> {
+        while reader.has_chars()? {
+            assert_eq!(reader.peek_char()?.unwrap(), get_expected_char(&reader));
+            reader.read_char().unwrap();
+        }
+
+        assert_eq!(reader.get_position() as usize, file_size);
+        assert_eq!(reader.block, blocks as usize);
+
+        Ok(())
+    }
+
     #[test]
-    fn read_one_buffer() -> Result<(), Error> {
+    fn read_one_buffer() -> Result<(), CharReaderError> {
         let dir = tempdir()?;
         let file_path = create_test_file(&dir, "single_block.txt", 1)?;
         let file_path = file_path.to_str().unwrap();
 
-        let mut reader = CharReader::open(file_path);
+        let mut reader = CharReader::open(file_path)?;
+        assert_reader_has_read_file(&mut reader, BUFFER_SIZE, 1)?;
 
-        while reader.has_chars() {
-            assert_eq!(reader.peek_char().unwrap(), get_expected_char(&reader));
-            reader.read_char().unwrap();
-        }
-
-        assert_eq!(reader.get_position() as usize, BUFFER_SIZE);
-        assert_eq!(reader.block, 1);
         dir.close()?;
 
         Ok(())
     }
 
     #[test]
-    fn read_multiple_buffers() -> Result<(), Error> {
+    fn read_multiple_buffers() -> Result<(), CharReaderError> {
         const BLOCKS: u8 = 5;
         const FILE_SIZE: usize = BUFFER_SIZE * BLOCKS as usize;
 
@@ -179,22 +198,16 @@ mod tests {
         let file_path = create_test_file(&dir, "multiple_blocks.txt", BLOCKS)?;
         let file_path = file_path.to_str().unwrap();
 
-        let mut reader = CharReader::open(file_path);
+        let mut reader = CharReader::open(file_path)?;
+        assert_reader_has_read_file(&mut reader, FILE_SIZE, BLOCKS)?;
 
-        while reader.has_chars() {
-            let expected_char = get_expected_char(&reader);
-            assert_eq!(reader.read_char().unwrap(), expected_char);
-        }
-
-        assert_eq!(reader.get_position() as usize, FILE_SIZE);
-        assert_eq!(reader.block, BLOCKS as usize);
         dir.close()?;
 
         Ok(())
     }
 
     #[test]
-    fn read_and_seek_across_block() -> Result<(), Error> {
+    fn read_and_seek_across_block() -> Result<(), CharReaderError> {
         const BLOCKS: u8 = 5;
         const FILE_SIZE: usize = BUFFER_SIZE * BLOCKS as usize;
 
@@ -202,20 +215,14 @@ mod tests {
         let file_path = create_test_file(&dir, "multiple_blocks.txt", BLOCKS)?;
         let file_path = file_path.to_str().unwrap();
 
-        let mut reader = CharReader::open(file_path);
+        let mut reader = CharReader::open(file_path)?;
         let new_seek_position: u64 = BUFFER_SIZE
             .try_into()
             .expect("Buffer size should fit in a u64");
-        reader.seek_from_start(new_seek_position);
-        reader.seek_from_start(new_seek_position - 1);
+        reader.seek_from_start(new_seek_position)?;
+        reader.seek_from_start(new_seek_position - 1)?;
+        assert_reader_has_read_file(&mut reader, FILE_SIZE, BLOCKS)?;
 
-        while reader.has_chars() {
-            let expected_char = get_expected_char(&reader);
-            assert_eq!(reader.read_char().unwrap(), expected_char);
-        }
-
-        assert_eq!(reader.get_position() as usize, FILE_SIZE);
-        assert_eq!(reader.block, BLOCKS as usize);
         dir.close()?;
 
         Ok(())
