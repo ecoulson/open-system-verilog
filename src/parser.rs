@@ -1,4 +1,4 @@
-use std::iter::Peekable;
+use std::{error::Error, iter::Peekable};
 
 use crate::{
     lexer::FilePosition,
@@ -9,32 +9,36 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct ParseError {
-    message: &'static str,
-    file_position: FilePosition,
-}
+pub struct ParseError(String);
+
+impl Error for ParseError {}
 
 impl ParseError {
     fn new(message: &'static str, file_position: FilePosition) -> ParseError {
-        ParseError {
+        ParseError(format!(
+            "error: {}\n-->{}:{}",
             message,
-            file_position,
-        }
+            file_position.row(),
+            file_position.column()
+        ))
     }
+}
 
-    fn format_error(&self) -> String {
-        format!(
-            "error: {}\n--> {}:{}",
-            self.message,
-            self.file_position.row(),
-            self.file_position.column()
-        )
+impl From<&'static str> for ParseError {
+    fn from(message: &'static str) -> ParseError {
+        ParseError::new(message, FilePosition::new(0, 0))
+    }
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 pub struct Parser {
     token_stream: Peekable<TokenStream>,
-    errors: Vec<String>,
+    errors: Vec<ParseError>,
 }
 
 impl Parser {
@@ -45,24 +49,26 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<SyntaxNode, &Vec<String>> {
-        let mut root: Option<SyntaxNode> = None;
-
-        match self.parse_simple_identifier() {
-            Err(error) => self.errors.push(error.format_error()),
-            Ok(token) => root = Some(token),
-        }
+    pub fn parse(&mut self) -> Result<SyntaxNode, &Vec<ParseError>> {
+        let root: SyntaxNode = self
+            .parse_simple_identifier()
+            .unwrap_or_else(|error| self.create_error_node(error));
 
         self.next_token().map(|token| match token.consume() {
-            TokenKind::EOF => (),
-            _ => self.errors.push(String::from("Expected eof")),
+            TokenKind::EOF => SyntaxNode::EOF,
+            _ => self.create_error_node(ParseError::from("Expected EOF")),
         });
 
         if !self.errors.is_empty() {
             return Err(&self.errors);
         }
 
-        return Ok(root.unwrap());
+        return Ok(root);
+    }
+
+    fn create_error_node(&mut self, error: ParseError) -> SyntaxNode {
+        self.errors.push(error);
+        SyntaxNode::Error
     }
 
     fn next_token(&mut self) -> Option<Token> {
@@ -75,7 +81,7 @@ impl Parser {
 
     fn file_position(&mut self) -> Result<FilePosition, ParseError> {
         self.peek_token()
-            .map_or(Err(ParseError::new("", FilePosition::new(0, 0))), |token| {
+            .map_or(Err(ParseError::from("No token to peek")), |token| {
                 Ok(token.position())
             })
     }
