@@ -4,7 +4,7 @@ use crate::{
     lexer::FilePosition,
     punctuation::Punctuation,
     syntax_node::{IdentifierNode, SyntaxNode},
-    token::{TokenKind, Token},
+    token::{Token, TokenKind},
     token_stream::TokenStream,
 };
 
@@ -53,12 +53,10 @@ impl Parser {
             Ok(token) => root = Some(token),
         }
 
-        if let Some(token) = self.next_token() {
-            match token.consume() {
-                TokenKind::EOF => (),
-                _ => self.errors.push(String::from("Expected eof")),
-            };
-        }
+        self.next_token().map(|token| match token.consume() {
+            TokenKind::EOF => (),
+            _ => self.errors.push(String::from("Expected eof")),
+        });
 
         if !self.errors.is_empty() {
             return Err(&self.errors);
@@ -76,44 +74,28 @@ impl Parser {
     }
 
     fn file_position(&mut self) -> Result<FilePosition, ParseError> {
-        if let Some(token) = self.peek_token() {
-            return Ok(token.position());
-        }
-
-        Err(ParseError::new("", FilePosition::new(0, 0)))
+        self.peek_token()
+            .map_or(Err(ParseError::new("", FilePosition::new(0, 0))), |token| {
+                Ok(token.position())
+            })
     }
 
     fn is_next_token_character_sequence(&mut self) -> bool {
-        if let Some(token) = self.peek_token() {
-            match token.kind() {
-                TokenKind::CharacterSequence(_) => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
+        self.peek_token().map_or(false, |token| {
+            matches!(token.kind(), TokenKind::CharacterSequence(_))
+        })
     }
 
     fn is_next_token_number(&mut self) -> bool {
-        if let Some(token) = self.peek_token() {
-            match token.kind() {
-                TokenKind::Number(_) => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
+        self.peek_token()
+            .map_or(false, |token| matches!(token.kind(), TokenKind::Number(_)))
     }
 
     fn is_next_token_punctuation(&mut self, punctuation: Punctuation) -> bool {
-        if let Some(token) = self.peek_token() {
-            match token.kind() {
-                TokenKind::Punctuation(other) => other == &punctuation,
-                _ => false,
-            }
-        } else {
-            false
-        }
+        self.peek_token().map_or(false, |token| match token.kind() {
+            TokenKind::Punctuation(value) => value == &punctuation,
+            _ => false,
+        })
     }
 
     fn parse_simple_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
@@ -162,23 +144,20 @@ impl Parser {
     }
 
     fn consume_next_token_as_string(&mut self) -> Option<String> {
-        if let Some(token) = self.next_token() {
-            match token.consume() {
+        self.next_token()
+            .map_or(None, |token| match token.consume() {
                 TokenKind::CharacterSequence(string) | TokenKind::Number(string) => Some(string),
                 TokenKind::Punctuation(punctuation) => Some(punctuation.to_string()),
                 _ => None,
-            }
-        } else {
-            None
-        }
+            })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        lexer::FilePosition, punctuation::Punctuation, syntax_node::IdentifierNode,
-        token::Token, token_stream::TokenStream,
+        lexer::FilePosition, punctuation::Punctuation, syntax_node::IdentifierNode, token::Token,
+        token_stream::TokenStream,
     };
 
     use super::Parser;
@@ -187,10 +166,7 @@ mod tests {
     fn should_parse_identifier() {
         let expected_node = IdentifierNode::new(String::from("abc123$_"), FilePosition::new(1, 1));
         let tokens = vec![
-            Token::build_character_sequence_token(
-                String::from("abc"),
-                FilePosition::new(1, 1),
-            ),
+            Token::build_character_sequence_token(String::from("abc"), FilePosition::new(1, 1)),
             Token::build_number_token(String::from("123"), FilePosition::new(1, 1)),
             Token::build_punctuation_token(Punctuation::Dollar, FilePosition::new(1, 1)),
             Token::build_punctuation_token(Punctuation::Underscore, FilePosition::new(1, 1)),
