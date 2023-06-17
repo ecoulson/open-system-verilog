@@ -1,4 +1,4 @@
-use crate::{lexer::FilePosition, token::{TokenStruct, TokenFromSequence}};
+use crate::{lexer::FilePosition, token::{Token, TokenFromSequence}};
 
 pub const OPERATOR_SYMBOLS: [&'static str; 50] = [
     "+", "-", "!", "~", "&", "~&", "|", "~|", "^", "~^", "^~", "++", "--", "**", "*", "/", "%",
@@ -62,133 +62,133 @@ pub enum Operator {
 }
 
 impl TokenFromSequence for Operator {
-    fn from_sequence(sequence: &str, position: FilePosition) -> Result<TokenStruct, &'static str> {
+    fn from_sequence(sequence: &str, position: FilePosition) -> Result<Token, &'static str> {
         match sequence {
-            "+" => Ok(TokenStruct::build_operator_token(Operator::Addition, position)),
-            "-" => Ok(TokenStruct::build_operator_token(Operator::Subtraction, position)),
-            "!" => Ok(TokenStruct::build_operator_token(Operator::Not, position)),
-            "~" => Ok(TokenStruct::build_operator_token(Operator::Negation, position)),
-            "&" => Ok(TokenStruct::build_operator_token(Operator::BitwiseAnd, position)),
-            "~&" => Ok(TokenStruct::build_operator_token(Operator::Nand, position)),
-            "|" => Ok(TokenStruct::build_operator_token(Operator::BitwiseOr, position)),
-            "~|" => Ok(TokenStruct::build_operator_token(Operator::Nor, position)),
-            "^" => Ok(TokenStruct::build_operator_token(Operator::Xor, position)),
-            "~^" => Ok(TokenStruct::build_operator_token(Operator::Xnor, position)),
-            "^~" => Ok(TokenStruct::build_operator_token(Operator::Xnor, position)),
-            "++" => Ok(TokenStruct::build_operator_token(Operator::Increment, position)),
-            "--" => Ok(TokenStruct::build_operator_token(Operator::Decrement, position)),
-            "**" => Ok(TokenStruct::build_operator_token(
+            "+" => Ok(Token::build_operator_token(Operator::Addition, position)),
+            "-" => Ok(Token::build_operator_token(Operator::Subtraction, position)),
+            "!" => Ok(Token::build_operator_token(Operator::Not, position)),
+            "~" => Ok(Token::build_operator_token(Operator::Negation, position)),
+            "&" => Ok(Token::build_operator_token(Operator::BitwiseAnd, position)),
+            "~&" => Ok(Token::build_operator_token(Operator::Nand, position)),
+            "|" => Ok(Token::build_operator_token(Operator::BitwiseOr, position)),
+            "~|" => Ok(Token::build_operator_token(Operator::Nor, position)),
+            "^" => Ok(Token::build_operator_token(Operator::Xor, position)),
+            "~^" => Ok(Token::build_operator_token(Operator::Xnor, position)),
+            "^~" => Ok(Token::build_operator_token(Operator::Xnor, position)),
+            "++" => Ok(Token::build_operator_token(Operator::Increment, position)),
+            "--" => Ok(Token::build_operator_token(Operator::Decrement, position)),
+            "**" => Ok(Token::build_operator_token(
                 Operator::Exponentiation,
                 position,
             )),
-            "*" => Ok(TokenStruct::build_operator_token(
+            "*" => Ok(Token::build_operator_token(
                 Operator::Multiplication,
                 position,
             )),
-            "/" => Ok(TokenStruct::build_operator_token(Operator::Division, position)),
-            "%" => Ok(TokenStruct::build_operator_token(Operator::Modulo, position)),
-            ">>" => Ok(TokenStruct::build_operator_token(
+            "/" => Ok(Token::build_operator_token(Operator::Division, position)),
+            "%" => Ok(Token::build_operator_token(Operator::Modulo, position)),
+            ">>" => Ok(Token::build_operator_token(
                 Operator::LogicalRightShift,
                 position,
             )),
-            "<<" => Ok(TokenStruct::build_operator_token(
+            "<<" => Ok(Token::build_operator_token(
                 Operator::LogicalLeftShift,
                 position,
             )),
-            ">>>" => Ok(TokenStruct::build_operator_token(
+            ">>>" => Ok(Token::build_operator_token(
                 Operator::ArithmeticRightShift,
                 position,
             )),
-            "<<<" => Ok(TokenStruct::build_operator_token(
+            "<<<" => Ok(Token::build_operator_token(
                 Operator::ArithmeticLeftShift,
                 position,
             )),
-            "<" => Ok(TokenStruct::build_operator_token(Operator::LessThan, position)),
-            "<=" => Ok(TokenStruct::build_operator_token(
+            "<" => Ok(Token::build_operator_token(Operator::LessThan, position)),
+            "<=" => Ok(Token::build_operator_token(
                 Operator::LessThanOrEqualTo,
                 position,
             )),
-            ">" => Ok(TokenStruct::build_operator_token(Operator::GreaterThan, position)),
-            ">=" => Ok(TokenStruct::build_operator_token(
+            ">" => Ok(Token::build_operator_token(Operator::GreaterThan, position)),
+            ">=" => Ok(Token::build_operator_token(
                 Operator::GreaterThanOrEqualTo,
                 position,
             )),
-            "inside" => Ok(TokenStruct::build_operator_token(Operator::Inside, position)),
-            "dist" => Ok(TokenStruct::build_operator_token(Operator::Distribution, position)),
-            "==" => Ok(TokenStruct::build_operator_token(
+            "inside" => Ok(Token::build_operator_token(Operator::Inside, position)),
+            "dist" => Ok(Token::build_operator_token(Operator::Distribution, position)),
+            "==" => Ok(Token::build_operator_token(
                 Operator::LogicalEquality,
                 position,
             )),
-            "!=" => Ok(TokenStruct::build_operator_token(
+            "!=" => Ok(Token::build_operator_token(
                 Operator::LogicalInequality,
                 position,
             )),
-            "===" => Ok(TokenStruct::build_operator_token(Operator::CaseEquality, position)),
-            "!==" => Ok(TokenStruct::build_operator_token(
+            "===" => Ok(Token::build_operator_token(Operator::CaseEquality, position)),
+            "!==" => Ok(Token::build_operator_token(
                 Operator::CaseInequality,
                 position,
             )),
-            "==?" => Ok(TokenStruct::build_operator_token(
+            "==?" => Ok(Token::build_operator_token(
                 Operator::WildcardEquality,
                 position,
             )),
-            "!=?" => Ok(TokenStruct::build_operator_token(
+            "!=?" => Ok(Token::build_operator_token(
                 Operator::WildcardInequality,
                 position,
             )),
-            "&&" => Ok(TokenStruct::build_operator_token(Operator::LogicalAnd, position)),
-            "||" => Ok(TokenStruct::build_operator_token(Operator::LogicalOr, position)),
-            "->" => Ok(TokenStruct::build_operator_token(Operator::Implication, position)),
-            "<->" => Ok(TokenStruct::build_operator_token(Operator::Equivalence, position)),
-            "=" => Ok(TokenStruct::build_operator_token(
+            "&&" => Ok(Token::build_operator_token(Operator::LogicalAnd, position)),
+            "||" => Ok(Token::build_operator_token(Operator::LogicalOr, position)),
+            "->" => Ok(Token::build_operator_token(Operator::Implication, position)),
+            "<->" => Ok(Token::build_operator_token(Operator::Equivalence, position)),
+            "=" => Ok(Token::build_operator_token(
                 Operator::BinaryAssignment,
                 position,
             )),
-            "+=" => Ok(TokenStruct::build_operator_token(
+            "+=" => Ok(Token::build_operator_token(
                 Operator::AdditionAssignment,
                 position,
             )),
-            "-=" => Ok(TokenStruct::build_operator_token(
+            "-=" => Ok(Token::build_operator_token(
                 Operator::SubtractionAssignment,
                 position,
             )),
-            "*=" => Ok(TokenStruct::build_operator_token(
+            "*=" => Ok(Token::build_operator_token(
                 Operator::MultiplicationAssignment,
                 position,
             )),
-            "/=" => Ok(TokenStruct::build_operator_token(
+            "/=" => Ok(Token::build_operator_token(
                 Operator::DivisionAssignment,
                 position,
             )),
-            "%=" => Ok(TokenStruct::build_operator_token(
+            "%=" => Ok(Token::build_operator_token(
                 Operator::ModuloAssignment,
                 position,
             )),
-            "&=" => Ok(TokenStruct::build_operator_token(
+            "&=" => Ok(Token::build_operator_token(
                 Operator::BitwiseAndAssignment,
                 position,
             )),
-            "^=" => Ok(TokenStruct::build_operator_token(
+            "^=" => Ok(Token::build_operator_token(
                 Operator::BitwiseXorAssignment,
                 position,
             )),
-            "|=" => Ok(TokenStruct::build_operator_token(
+            "|=" => Ok(Token::build_operator_token(
                 Operator::BitwiseOrAssignment,
                 position,
             )),
-            "<<=" => Ok(TokenStruct::build_operator_token(
+            "<<=" => Ok(Token::build_operator_token(
                 Operator::LogicalLeftShiftAssignment,
                 position,
             )),
-            ">>=" => Ok(TokenStruct::build_operator_token(
+            ">>=" => Ok(Token::build_operator_token(
                 Operator::LogicalRightShiftAssignment,
                 position,
             )),
-            "<<<=" => Ok(TokenStruct::build_operator_token(
+            "<<<=" => Ok(Token::build_operator_token(
                 Operator::ArithmeticLeftShiftAssignment,
                 position,
             )),
-            ">>>=" => Ok(TokenStruct::build_operator_token(
+            ">>>=" => Ok(Token::build_operator_token(
                 Operator::ArithmeticRightShiftAssignment,
                 position,
             )),

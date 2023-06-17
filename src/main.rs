@@ -33,8 +33,6 @@ fn evaluate(compilation_unit: &CompilationUnit) {
             process::exit(1)
         });
 
-        for token in tokens {
-            println!("{}", token.as_code());
-        }
+        dbg!(tokens);
     }
 }
