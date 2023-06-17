@@ -103,5 +103,73 @@ impl TokenStruct {
     pub fn consume(self) -> Token {
         self.kind
     }
-}
 
+    pub fn as_code(&self) -> String {
+        match self.kind() {
+            Token::EOF => format!(
+                "TokenStruct::build_eof_token(FilePosition::new({}, {})),",
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::WhiteSpace => format!(
+                "TokenStruct::build_white_space_token(FilePosition::new({}, {})),",
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Comment => format!(
+                "TokenStruct::build_comment_token(FilePosition::new({}, {})),",
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Error(error) => format!(
+                "TokenStruct::build_error_token(String::from(\"{}\"), FilePosition::new({}, {})),",
+                error,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Number(number) => format!(
+                "TokenStruct::build_number_token(String::from(\"{}\"), FilePosition::new({}, {})),",
+                number,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::StringLiteral(string_literal) => format!(
+                "TokenStruct::build_string_literal_token(String::from(\"{}\"), FilePosition::new({}, {})),",
+                string_literal,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::CharacterSequence(character_sequence) => format!(
+                "TokenStruct::build_character_sequence_token(String::from(\"{}\"), FilePosition::new({}, {})),",
+                character_sequence,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::EscapedIdentifier(escaped_identifier) => format!(
+                "TokenStruct::build_escaped_identifier_token(String::from(\"{}\"), FilePosition::new({}, {})),",
+                escaped_identifier,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Operator(operator) => format!(
+                "TokenStruct::build_operator_token(Operator::{:?}, FilePosition::new({}, {})),",
+                operator,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Keyword(keyword) => format!(
+                "TokenStruct::build_keyword_token(Keyword::{:?}, FilePosition::new({}, {})),",
+                keyword,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+            Token::Punctuation(punctuation) => format!(
+                "TokenStruct::build_punctuation_token(Punctuation::{:?}, FilePosition::new({}, {})),",
+                punctuation,
+                self.file_position.row(),
+                self.file_position.column()
+            ),
+
+        }
+    }
+}
