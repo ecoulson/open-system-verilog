@@ -14,19 +14,14 @@ pub struct ParseError(String);
 impl Error for ParseError {}
 
 impl ParseError {
-    fn new(message: &'static str, file_position: FilePosition) -> ParseError {
+    fn new(message: &'static str, file_path: &str, file_position: FilePosition) -> ParseError {
         ParseError(format!(
-            "error: {}\n-->{}:{}",
+            "error: {}\n-->{}:{}:{}",
             message,
+            file_path,
             file_position.row(),
             file_position.column()
         ))
-    }
-}
-
-impl From<&'static str> for ParseError {
-    fn from(message: &'static str) -> ParseError {
-        ParseError::new(message, FilePosition::new(0, 0))
     }
 }
 
@@ -36,14 +31,16 @@ impl std::fmt::Display for ParseError {
     }
 }
 
-pub struct Parser {
+pub struct Parser<'a> {
+    file_path: &'a str,
     token_stream: Peekable<TokenStream>,
     errors: Vec<ParseError>,
 }
 
-impl Parser {
-    pub fn new(token_stream: TokenStream) -> Parser {
+impl<'a> Parser<'a> {
+    pub fn new<'b>(file_path: &'b str, token_stream: TokenStream) -> Parser<'b> {
         Parser {
+            file_path,
             token_stream: token_stream.peekable(),
             errors: Vec::new(),
         }
@@ -54,9 +51,12 @@ impl Parser {
             .parse_simple_identifier()
             .unwrap_or_else(|error| self.create_error_node(error));
 
-        self.next_token().map(|token| match token.consume() {
-            TokenKind::EOF => SyntaxNode::EOF,
-            _ => self.create_error_node(ParseError::from("Expected EOF")),
+        self.token_stream.next().map(|token| {
+            let file_position = token.position();
+            match token.consume() {
+                TokenKind::EOF => SyntaxNode::EOF,
+                _ => self.create_error_node_from_message("Expected EOF", file_position),
+            }
         });
 
         if !self.errors.is_empty() {
@@ -71,91 +71,77 @@ impl Parser {
         SyntaxNode::Error
     }
 
-    fn next_token(&mut self) -> Option<Token> {
-        self.token_stream.next()
+    fn create_error_node_from_message(
+        &mut self,
+        message: &'static str,
+        file_position: FilePosition,
+    ) -> SyntaxNode {
+        self.errors
+            .push(self.create_parse_error(message, file_position));
+        SyntaxNode::Error
     }
 
-    fn peek_token(&mut self) -> Option<&Token> {
-        self.token_stream.peek()
+    fn create_parse_error(&self, message: &'static str, file_position: FilePosition) -> ParseError {
+        ParseError::new(message, self.file_path, file_position)
     }
 
-    fn file_position(&mut self) -> Result<FilePosition, ParseError> {
-        self.peek_token()
-            .map_or(Err(ParseError::from("No token to peek")), |token| {
-                Ok(token.position())
-            })
-    }
-
-    fn is_next_token_character_sequence(&mut self) -> bool {
-        self.peek_token().map_or(false, |token| {
-            matches!(token.kind(), TokenKind::CharacterSequence(_))
-        })
-    }
-
-    fn is_next_token_number(&mut self) -> bool {
-        self.peek_token()
-            .map_or(false, |token| matches!(token.kind(), TokenKind::Number(_)))
-    }
-
-    fn is_next_token_punctuation(&mut self, punctuation: Punctuation) -> bool {
-        self.peek_token().map_or(false, |token| match token.kind() {
-            TokenKind::Punctuation(value) => value == &punctuation,
-            _ => false,
-        })
+    fn file_position(&mut self) -> Option<FilePosition> {
+        self.token_stream.peek().map(|token| token.position())
     }
 
     fn parse_simple_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         let mut identifier = Vec::new();
-        let position: FilePosition = self.file_position()?;
+        let position: FilePosition = self.file_position().unwrap();
 
-        if self.can_read_simple_identifier_beginning_token() {
-            let character_sequence = self.consume_next_token_as_string().unwrap();
+        identifier.push(
+            self.read_simple_identifier_beginning_token()?
+                .consume_as_string(),
+        );
 
-            identifier.push(character_sequence);
-        } else {
-            return Err(ParseError::new(
-                "Identifier must start with _ or character sequence",
-                FilePosition::new(1, 1),
-            ));
-        }
-
-        while self.can_read_simple_identifier_token() {
-            if let Some(part) = self.consume_next_token_as_string() {
-                identifier.push(part);
-            }
+        while let Some(token) = self.read_simple_identifier_token() {
+            identifier.push(token.consume_as_string())
         }
 
         let identifier = identifier.join("");
 
         if identifier == "_" {
-            return Err(ParseError::new(
-                "Identifier must not consist of solely an '_'",
-                position,
-            ));
+            return Err(
+                self.create_parse_error("Identifier must not consist of solely an '_'", position)
+            );
         }
 
         Ok(IdentifierNode::new(identifier, position))
     }
 
-    fn can_read_simple_identifier_beginning_token(&mut self) -> bool {
-        self.is_next_token_character_sequence()
-            || self.is_next_token_punctuation(Punctuation::Underscore)
-    }
-
-    fn can_read_simple_identifier_token(&mut self) -> bool {
-        self.is_next_token_character_sequence()
-            || self.is_next_token_number()
-            || self.is_next_token_punctuation(Punctuation::Dollar)
-            || self.is_next_token_punctuation(Punctuation::Underscore)
-    }
-
-    fn consume_next_token_as_string(&mut self) -> Option<String> {
-        self.next_token()
-            .map_or(None, |token| match token.consume() {
-                TokenKind::CharacterSequence(string) | TokenKind::Number(string) => Some(string),
-                TokenKind::Punctuation(punctuation) => Some(punctuation.to_string()),
+    fn read_simple_identifier_beginning_token(&mut self) -> Result<Token, ParseError> {
+        let position: FilePosition = self.file_position().unwrap();
+        self.token_stream
+            .next()
+            .and_then(|token| match token.kind() {
+                TokenKind::CharacterSequence(_)
+                | TokenKind::Punctuation(Punctuation::Underscore) => Some(token),
                 _ => None,
             })
+            .ok_or_else(|| {
+                self.create_parse_error(
+                    "Identifier must start with _ or character sequence",
+                    position,
+                )
+            })
+    }
+
+    fn read_simple_identifier_token(&mut self) -> Option<Token> {
+        if let Some(token) = self.token_stream.peek() {
+            return match token.kind() {
+                TokenKind::CharacterSequence(_)
+                | TokenKind::Number(_)
+                | TokenKind::Punctuation(Punctuation::Dollar)
+                | TokenKind::Punctuation(Punctuation::Underscore) => self.token_stream.next(),
+                _ => None,
+            };
+        } else {
+            None
+        }
     }
 }
 
@@ -177,7 +163,7 @@ mod tests {
             Token::build_punctuation_token(Punctuation::Dollar, FilePosition::new(1, 1)),
             Token::build_punctuation_token(Punctuation::Underscore, FilePosition::new(1, 1)),
         ];
-        let mut parser = Parser::new(TokenStream::new(tokens));
+        let mut parser = Parser::new("", TokenStream::new(tokens));
 
         let node = parser
             .parse_simple_identifier()
