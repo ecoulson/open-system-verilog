@@ -63,14 +63,20 @@ impl Token {
         character_sequence: String,
         file_position: FilePosition,
     ) -> Token {
-        Token::new(TokenKind::CharacterSequence(character_sequence), file_position)
+        Token::new(
+            TokenKind::CharacterSequence(character_sequence),
+            file_position,
+        )
     }
 
     pub fn build_escaped_identifier_token(
         escaped_identifier: String,
         file_position: FilePosition,
     ) -> Token {
-        Token::new(TokenKind::CharacterSequence(escaped_identifier), file_position)
+        Token::new(
+            TokenKind::CharacterSequence(escaped_identifier),
+            file_position,
+        )
     }
 
     pub fn build_operator_token(operator: Operator, file_position: FilePosition) -> Token {
@@ -81,10 +87,7 @@ impl Token {
         Token::new(TokenKind::Keyword(keyword), file_position)
     }
 
-    pub fn build_punctuation_token(
-        punctuation: Punctuation,
-        file_position: FilePosition,
-    ) -> Token {
+    pub fn build_punctuation_token(punctuation: Punctuation, file_position: FilePosition) -> Token {
         Token::new(TokenKind::Punctuation(punctuation), file_position)
     }
 
@@ -102,5 +105,13 @@ impl Token {
 
     pub fn consume(self) -> TokenKind {
         self.kind
+    }
+
+    pub fn consume_as_string(self) -> String {
+        match self.kind {
+            TokenKind::CharacterSequence(string) | TokenKind::Number(string) => string,
+            TokenKind::Punctuation(punctuation) => punctuation.to_string(),
+            _ => String::from(""),
+        }
     }
 }

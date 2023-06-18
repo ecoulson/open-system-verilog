@@ -4,6 +4,7 @@ use std::process;
 use open_system_verilog::compilation_unit::CompilationUnit;
 use open_system_verilog::config::Config;
 use open_system_verilog::lexer::Lexer;
+use open_system_verilog::parser::Parser;
 
 fn main() {
     let config = Config::build(env::args().peekable()).unwrap_or_else(|errors| {
@@ -32,7 +33,16 @@ fn evaluate(compilation_unit: &CompilationUnit) {
             eprintln!("{:?}", error);
             process::exit(1)
         });
+        let mut parser = Parser::new(file_path, tokens);
 
-        dbg!(tokens);
+        let ast = parser.parse().unwrap_or_else(|errors| {
+            for error in errors {
+                eprintln!("{error}");
+            }
+
+            process::exit(1);
+        });
+
+        dbg!(ast);
     }
 }
