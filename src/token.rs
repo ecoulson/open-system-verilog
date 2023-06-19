@@ -74,7 +74,7 @@ impl Token {
         file_position: FilePosition,
     ) -> Token {
         Token::new(
-            TokenKind::CharacterSequence(escaped_identifier),
+            TokenKind::EscapedIdentifier(escaped_identifier),
             file_position,
         )
     }
@@ -109,7 +109,9 @@ impl Token {
 
     pub fn consume_as_string(self) -> String {
         match self.kind {
-            TokenKind::CharacterSequence(string) | TokenKind::Number(string) => string,
+            TokenKind::EscapedIdentifier(string)
+            | TokenKind::CharacterSequence(string)
+            | TokenKind::Number(string) => string,
             TokenKind::Punctuation(punctuation) => punctuation.to_string(),
             _ => String::from(""),
         }
