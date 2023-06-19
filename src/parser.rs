@@ -75,7 +75,91 @@ impl<'a> Parser<'a> {
             .map_or(self.eof_position, |token| token.position())
     }
 
+    fn parse_generate_block_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
     fn parse_genvar_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_array_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_block_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_bin_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_cell_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_checker_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_class_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_class_variable_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_clocking_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_config_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_const_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_constraint_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_covergroup_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_covergroup_variable_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_cover_point_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_cross_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_dynamic_array_variable_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_enum_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_formal_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_formal_port_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
+    fn parse_function_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         self.parse_identifier()
     }
 
