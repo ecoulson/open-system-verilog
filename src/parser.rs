@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
             return Ok(token);
         }
 
-        if let Ok(token) = self.parse_escaped_identifiers() {
+        if let Ok(token) = self.parse_escaped_identifier() {
             return Ok(token);
         }
 
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
             identifier.push(token.consume_as_string())
         }
 
-        if identifier.len() == 1 && identifier[0] == "" {
+        if identifier.len() == 1 && identifier[0] == "_" {
             return Err(
                 self.create_parse_error("Identifier must not consist of solely an '_'", position)
             );
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_escaped_identifiers(&mut self) -> Result<SyntaxNode, ParseError> {
+    fn parse_escaped_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         self.expect_token(
             |kind| match kind {
                 TokenKind::EscapedIdentifier(_) => true,
@@ -248,6 +248,37 @@ impl<'a> Parser<'a> {
             let position = self.file_position();
             dbg!(&token);
             SyntaxNode::build_identifier(token.consume_as_string(), position)
+        })
+    }
+
+    fn parse_c_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        let mut identifier = Vec::new();
+        let position: FilePosition = self.file_position();
+
+        identifier.push(
+            self.read_simple_identifier_beginning_token()?
+                .consume_as_string(),
+        );
+
+        while let Some(token) = self.read_c_identifier_token() {
+            identifier.push(token.consume_as_string())
+        }
+
+        if identifier.len() == 1 && identifier[0] == "_" {
+            return Err(
+                self.create_parse_error("Identifier must not consist of solely an '_'", position)
+            );
+        }
+
+        Ok(SyntaxNode::build_identifier(identifier.join(""), position))
+    }
+
+    fn read_c_identifier_token(&mut self) -> Option<Token> {
+        self.read_token(|kind| match kind {
+            TokenKind::CharacterSequence(_)
+            | TokenKind::Number(_)
+            | TokenKind::Punctuation(Punctuation::Underscore) => true,
+            _ => false,
         })
     }
 }
@@ -291,9 +322,27 @@ mod tests {
         let mut parser = Parser::new("", TokenStream::new(tokens));
 
         let node = parser
-            .parse_escaped_identifiers()
+            .parse_escaped_identifier()
             .expect("Should parse escaped identifiers");
 
         assert_eq!(node, expected_node)
+    }
+
+    #[test]
+    fn should_parse_c_identifier() {
+        let expected_node =
+            SyntaxNode::build_identifier(String::from("abc123_"), FilePosition::new(1, 1));
+        let tokens = vec![
+            Token::build_character_sequence_token(String::from("abc"), FilePosition::new(1, 1)),
+            Token::build_number_token(String::from("123"), FilePosition::new(1, 1)),
+            Token::build_punctuation_token(Punctuation::Underscore, FilePosition::new(1, 1)),
+        ];
+        let mut parser = Parser::new("", TokenStream::new(tokens));
+
+        let node = parser
+            .parse_c_identifier()
+            .expect("Should not be none");
+
+        assert_eq!(node, expected_node);
     }
 }
