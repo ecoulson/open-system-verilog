@@ -50,7 +50,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self) -> Result<SyntaxNode, &Vec<ParseError>> {
         let root: SyntaxNode = self
-            .parse_identifier()
+            .parse_genvar_identifier()
             .unwrap_or_else(|error| self.create_error_node(error));
 
         if !self.errors.is_empty() {
@@ -75,8 +75,13 @@ impl<'a> Parser<'a> {
             .map_or(self.eof_position, |token| token.position())
     }
 
+    fn parse_genvar_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
+        self.parse_identifier()
+    }
+
     fn parse_identifier(&mut self) -> Result<SyntaxNode, ParseError> {
         let file_position = self.file_position();
+
         if let Ok(token) = self.parse_simple_identifier() {
             return Ok(token);
         }
