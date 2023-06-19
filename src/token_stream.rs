@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::token::Token;
+use crate::{token::Token, lexer::FilePosition};
 
 #[derive(Debug)]
 pub struct TokenStream {
@@ -12,6 +12,10 @@ impl TokenStream {
         TokenStream {
             tokens: VecDeque::from(tokens),
         }
+    }
+
+    pub fn eof_position(&self) -> FilePosition {
+        self.tokens.back().map_or(FilePosition::new(1, 1), |token| token.position())
     }
 }
 
